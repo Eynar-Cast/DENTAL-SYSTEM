@@ -65,6 +65,14 @@ async function main() {
   const delPersonas = await q(`DELETE FROM persona WHERE documento_identidad <> 'ADMIN-0001'`);
   console.log(`  Personas no-admin eliminadas: ${delPersonas.rowCount}`);
   await q(`SELECT setval('persona_id_persona_seq', (SELECT COALESCE(MAX(id_persona),1) FROM persona))`);
+  await q(`INSERT INTO usuario (id_persona, email, password_hash, activo)
+           VALUES ((SELECT id_persona FROM persona WHERE documento_identidad = 'ADMIN-0001'),
+                   'admin@consultorio.bo',
+                   '$2b$10$ptowHXTG3f6/CqqaVIRroOA3WZma45M.PK4ten5NeoFHLOh8C3Wh.', TRUE)`);
+  await q(`INSERT INTO usuario_rol (id_usuario, id_rol)
+           VALUES ((SELECT id_usuario FROM usuario WHERE email = 'admin@consultorio.bo'),
+                   (SELECT id_rol FROM rol WHERE nombre_rol = 'admin'))`);
+  console.log("  Admin restaurado: admin@consultorio.bo / Admin@1234");
   console.log("  Listo.");
 
   console.log("=== 2. Catálogos de referencia ===");
