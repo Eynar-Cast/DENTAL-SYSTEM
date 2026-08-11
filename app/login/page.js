@@ -144,7 +144,10 @@ export default function LoginPage() {
 
         <hr className="divider" />
         <p style={{ textAlign: "center", fontSize: 12, color: "var(--text-faint)", margin: 0 }}>
-          Smilesoft © {new Date().getFullYear()} — Consultorio dental
+          Smilesoft © {new Date().getFullYear()} — Consultorio dental ·{" "}
+          <a href="/docs" style={{ color: "var(--accent-soft)", textDecoration: "none" }}>
+            Documentación API
+          </a>
         </p>
       </div>
     </div>

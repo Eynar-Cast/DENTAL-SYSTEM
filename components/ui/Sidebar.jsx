@@ -74,12 +74,18 @@ export default function Sidebar({ user }) {
         </nav>
 
         <div className="sidebar-footer">
-          <span className="status-dot" />
-          {!collapsed && (
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-              Sistema en línea · v1.0
-            </span>
-          )}
+          <a href="/docs" className="nav-link" onClick={() => setMobileOpen(false)}>
+            <span className="nav-icon">⎙</span>
+            {!collapsed && <span>Documentación API</span>}
+          </a>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 10 }}>
+            <span className="status-dot" />
+            {!collapsed && (
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                Sistema en línea · v1.0
+              </span>
+            )}
+          </div>
         </div>
 
         <button

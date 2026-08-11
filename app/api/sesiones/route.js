@@ -9,6 +9,7 @@ export async function GET(request) {
 
   const { searchParams } = new URL(request.url);
   const idUsuario = searchParams.get("id_usuario");
+  const usuario = searchParams.get("usuario");
 
   let sql = `SELECT s.id_sesion, s.fecha_inicio, s.fecha_fin, s.ip_origen, s.user_agent, s.estado,
                     u.email, per.nombres, per.apellidos
@@ -20,6 +21,10 @@ export async function GET(request) {
   if (idUsuario) {
     params.push(Number(idUsuario));
     sql += ` AND s.id_usuario = $${params.length}`;
+  }
+  if (usuario) {
+    params.push(`%${usuario}%`);
+    sql += ` AND (per.nombres ILIKE $${params.length} OR per.apellidos ILIKE $${params.length} OR u.email ILIKE $${params.length})`;
   }
   sql += ` ORDER BY s.fecha_inicio DESC LIMIT 100`;
 

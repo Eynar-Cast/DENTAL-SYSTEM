@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { verifyPassword, createSessionToken, setSessionCookie, obtenerRolesUsuario, obtenerIP } from "@/lib/auth";
+import { registroIntentoFallido, limpiarIntentos, bloqueadoPorIntentos, WINDOW_MS } from "@/lib/rate-limit";
 
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
+    const ip = obtenerIP(request);
+
+    if (bloqueadoPorIntentos(ip, email)) {
+      return NextResponse.json(
+        { error: `Demasiados intentos fallidos. Intenta de nuevo en ${WINDOW_MS / 60000} minutos.` },
+        { status: 429 }
+      );
+    }
 
     if (!email || !password) {
       return NextResponse.json(
@@ -23,6 +32,7 @@ export async function POST(request) {
     );
 
     if (userResult.rows.length === 0) {
+      registroIntentoFallido(ip, email);
       return NextResponse.json(
         { error: "Credenciales inválidas." },
         { status: 401 }
@@ -40,11 +50,14 @@ export async function POST(request) {
 
     const passwordMatches = await verifyPassword(password, user.password_hash);
     if (!passwordMatches) {
+      registroIntentoFallido(ip, email);
       return NextResponse.json(
         { error: "Credenciales inválidas." },
         { status: 401 }
       );
     }
+
+    limpiarIntentos(ip, email);
 
     // Limpiar sesiones expiradas (inactividad > 8 horas)
     await query(
@@ -55,7 +68,6 @@ export async function POST(request) {
 
     const roles = await obtenerRolesUsuario(user.id_usuario);
 
-    const ip = obtenerIP(request);
     const userAgent = request.headers.get("user-agent") || null;
 
     const sessionResult = await query(
