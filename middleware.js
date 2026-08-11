@@ -1,10 +1,28 @@
 import { NextResponse } from "next/server";
+import { jwtVerify } from "jose";
 
-// Middleware temporal: por ahora deja pasar todo.
-// Cuando implementemos jose + sesiones, aquí validaremos el token
-// y redirigiremos a /login si no hay sesión activa en rutas /dashboard/*.
-export function middleware(request) {
-  return NextResponse.next();
+const COOKIE_NAME = "session";
+
+function getSecretKey() {
+  return new TextEncoder().encode(process.env.JWT_SECRET);
+}
+
+export async function middleware(request) {
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+
+  if (!token) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  try {
+    await jwtVerify(token, getSecretKey());
+    return NextResponse.next();
+  } catch (err) {
+    // Token inválido o expirado
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete(COOKIE_NAME);
+    return response;
+  }
 }
 
 export const config = {
