@@ -305,7 +305,7 @@ function PresupuestoForm({ onClose, onSaved }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiGet("/api/atenciones/procedimientos").then(setProcedimientos).catch(() => {});
+    apiGet("/api/procedimientos").then(setProcedimientos).catch(() => {});
     apiGet(`/api/pacientes?q=${encodeURIComponent(qPaciente)}`).then(setPacientes).catch(() => setPacientes([]));
   }, [qPaciente]);
 
