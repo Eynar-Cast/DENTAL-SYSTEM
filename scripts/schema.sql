@@ -384,3 +384,20 @@ INSERT INTO procedimiento (nombre, descripcion, precio_actual) VALUES
     ('Extracción', 'Extracción dental', 200.00),
     ('Corona / Prótesis', 'Corona o prótesis dental', 1800.00),
     ('Radiografía', 'Radiografía intraoral', 60.00);
+
+-- Usuario administrador inicial del sistema.
+-- Credenciales: admin@consultorio.bo / Admin@1234
+-- (El hash es de bcrypt con la contraseña Admin@1234)
+INSERT INTO persona (documento_identidad, nombres, apellidos, fecha_nacimiento, id_ciudad)
+VALUES ('ADMIN-0001', 'Administrador', 'del Sistema', '1990-01-01',
+        (SELECT id_ciudad FROM ciudad ORDER BY id_ciudad LIMIT 1));
+
+INSERT INTO usuario (id_persona, email, password_hash, activo)
+VALUES ((SELECT id_persona FROM persona WHERE documento_identidad = 'ADMIN-0001'),
+        'admin@consultorio.bo',
+        '$2b$10$ptowHXTG3f6/CqqaVIRroOA3WZma45M.PK4ten5NeoFHLOh8C3Wh.',
+        TRUE);
+
+INSERT INTO usuario_rol (id_usuario, id_rol)
+VALUES ((SELECT id_usuario FROM usuario WHERE email = 'admin@consultorio.bo'),
+        (SELECT id_rol FROM rol WHERE nombre_rol = 'admin'));
