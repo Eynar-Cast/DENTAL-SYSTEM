@@ -31,24 +31,32 @@ export async function GET(request) {
                   SELECT g.fecha::date AS fecha, SUM(g.monto) AS egresos
                   FROM gasto g WHERE g.anulado = FALSE GROUP BY g.fecha::date
                 ) e ON e.fecha = d.fecha
+                WHERE COALESCE(i.ingresos, 0) + COALESCE(e.egresos, 0) > 0
                 ORDER BY d.fecha`;
   const diario = await query(sqlDia, [desde || null, hasta || null]);
 
   // Mensual
+  const paramsMes = [];
+  let sqlCobros = `SELECT TO_CHAR(cb.fecha_hora, 'YYYY-MM') AS mes, SUM(cb.monto) AS ingresos
+                   FROM cobro cb WHERE cb.anulado = FALSE`;
+  if (desde) { paramsMes.push(desde); sqlCobros += ` AND cb.fecha_hora::date >= $${paramsMes.length}`; }
+  if (hasta) { paramsMes.push(hasta); sqlCobros += ` AND cb.fecha_hora::date <= $${paramsMes.length}`; }
+  sqlCobros += ` GROUP BY 1`;
+
+  let sqlGastos = `SELECT TO_CHAR(g.fecha, 'YYYY-MM') AS mes, SUM(g.monto) AS egresos
+                   FROM gasto g WHERE g.anulado = FALSE`;
+  if (desde) { paramsMes.push(desde); sqlGastos += ` AND g.fecha::date >= $${paramsMes.length}`; }
+  if (hasta) { paramsMes.push(hasta); sqlGastos += ` AND g.fecha::date <= $${paramsMes.length}`; }
+  sqlGastos += ` GROUP BY 1`;
+
   const sqlMes = `SELECT COALESCE(i.mes, e.mes) AS mes,
                          COALESCE(i.ingresos, 0) AS ingresos,
                          COALESCE(e.egresos, 0) AS egresos,
                          COALESCE(i.ingresos, 0) - COALESCE(e.egresos, 0) AS utilidad
-                  FROM (
-                    SELECT TO_CHAR(cb.fecha_hora, 'YYYY-MM') AS mes, SUM(cb.monto) AS ingresos
-                    FROM cobro cb WHERE cb.anulado = FALSE GROUP BY 1
-                  ) i
-                  FULL JOIN (
-                    SELECT TO_CHAR(g.fecha, 'YYYY-MM') AS mes, SUM(g.monto) AS egresos
-                    FROM gasto g WHERE g.anulado = FALSE GROUP BY 1
-                  ) e ON e.mes = i.mes
+                  FROM (${sqlCobros}) i
+                  FULL JOIN (${sqlGastos}) e ON e.mes = i.mes
                   ORDER BY mes`;
-  const mensual = await query(sqlMes);
+  const mensual = await query(sqlMes, paramsMes);
 
   return jsonOk({ diario: diario.rows, mensual: mensual.rows });
 }

@@ -21,10 +21,13 @@ export async function GET(request) {
   const diario = await query(sqlDia, paramsDia);
 
   // Mensual
-  const sqlMes = `SELECT TO_CHAR(cb.fecha_hora, 'YYYY-MM') AS mes, COALESCE(SUM(cb.monto),0) AS ingresos
-                  FROM cobro cb WHERE cb.anulado = FALSE
-                  GROUP BY TO_CHAR(cb.fecha_hora, 'YYYY-MM') ORDER BY mes`;
-  const mensual = await query(sqlMes);
+  let sqlMes = `SELECT TO_CHAR(cb.fecha_hora, 'YYYY-MM') AS mes, COALESCE(SUM(cb.monto),0) AS ingresos
+                  FROM cobro cb WHERE cb.anulado = FALSE`;
+  const paramsMes = [];
+  if (desde) { paramsMes.push(desde); sqlMes += ` AND cb.fecha_hora::date >= $${paramsMes.length}`; }
+  if (hasta) { paramsMes.push(hasta); sqlMes += ` AND cb.fecha_hora::date <= $${paramsMes.length}`; }
+  sqlMes += ` GROUP BY TO_CHAR(cb.fecha_hora, 'YYYY-MM') ORDER BY mes`;
+  const mensual = await query(sqlMes, paramsMes);
 
   return jsonOk({ diario: diario.rows, mensual: mensual.rows });
 }

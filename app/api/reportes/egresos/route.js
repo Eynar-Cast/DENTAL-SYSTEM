@@ -19,10 +19,13 @@ export async function GET(request) {
   sqlDia += ` GROUP BY g.fecha::date ORDER BY g.fecha::date`;
   const diario = await query(sqlDia, paramsDia);
 
-  const sqlMes = `SELECT TO_CHAR(g.fecha, 'YYYY-MM') AS mes, COALESCE(SUM(g.monto),0) AS egresos
-                  FROM gasto g WHERE g.anulado = FALSE
-                  GROUP BY TO_CHAR(g.fecha, 'YYYY-MM') ORDER BY mes`;
-  const mensual = await query(sqlMes);
+  let sqlMes = `SELECT TO_CHAR(g.fecha, 'YYYY-MM') AS mes, COALESCE(SUM(g.monto),0) AS egresos
+                  FROM gasto g WHERE g.anulado = FALSE`;
+  const paramsMes = [];
+  if (desde) { paramsMes.push(desde); sqlMes += ` AND g.fecha::date >= $${paramsMes.length}`; }
+  if (hasta) { paramsMes.push(hasta); sqlMes += ` AND g.fecha::date <= $${paramsMes.length}`; }
+  sqlMes += ` GROUP BY TO_CHAR(g.fecha, 'YYYY-MM') ORDER BY mes`;
+  const mensual = await query(sqlMes, paramsMes);
 
   return jsonOk({ diario: diario.rows, mensual: mensual.rows });
 }

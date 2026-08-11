@@ -18,6 +18,16 @@ const ESTADOS_SESION = {
   expirada: "amber",
 };
 
+function formatearJson(valor) {
+  if (valor == null) return "";
+  try {
+    const obj = typeof valor === "string" ? JSON.parse(valor) : valor;
+    return JSON.stringify(obj, null, 2);
+  } catch {
+    return typeof valor === "string" ? valor : String(valor);
+  }
+}
+
 export default function AuditoriaPage({ user }) {
   const { esAdmin } = usePermisos(user);
 
@@ -31,6 +41,7 @@ export default function AuditoriaPage({ user }) {
   const toast = useToast();
 
   useEffect(() => {
+    if (!esAdmin) return;
     let activo = true;
     const params = new URLSearchParams();
     if (tabla) params.set("tabla", tabla);
@@ -47,7 +58,7 @@ export default function AuditoriaPage({ user }) {
 
     return () => { activo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabla, desde, hasta]);
+  }, [tabla, desde, hasta, esAdmin]);
 
   if (!esAdmin) {
     return <div className="card"><EmptyState icon="⚿" message="Solo el administrador puede ver la auditoría" /></div>;
@@ -129,16 +140,16 @@ export default function AuditoriaPage({ user }) {
               <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>
                 {formatFechaHora(ver.fecha_hora)} · {ver.nombres} {ver.apellidos} · {ver.tabla_afectada} · operación {ver.operacion} · IP {ver.ip_origen}
               </div>
-              {ver.valor_anterior && (
+              {ver.valor_anterior != null && (
                 <>
                   <h4 style={{ margin: "0 0 8px", fontSize: 14 }}>Valor anterior</h4>
-                  <pre className="json-block">{JSON.stringify(JSON.parse(ver.valor_anterior), null, 2)}</pre>
+                  <pre className="json-block">{formatearJson(ver.valor_anterior)}</pre>
                 </>
               )}
-              {ver.valor_nuevo && (
+              {ver.valor_nuevo != null && (
                 <>
                   <h4 style={{ margin: "16px 0 8px", fontSize: 14 }}>Valor nuevo</h4>
-                  <pre className="json-block">{JSON.stringify(JSON.parse(ver.valor_nuevo), null, 2)}</pre>
+                  <pre className="json-block">{formatearJson(ver.valor_nuevo)}</pre>
                 </>
               )}
             </Modal>

@@ -69,6 +69,10 @@ export default function CitasPage({ user }) {
   }
 
   async function reprogramar(cita, fechaHora) {
+    if (!fechaHora) {
+      toast.push("error", "Selecciona la nueva fecha y hora");
+      return;
+    }
     try {
       await apiPatch(`/api/citas/${cita.id_cita}/estado`, { fecha_hora: fechaHora });
       toast.push("success", "Cita reprogramada");
@@ -174,7 +178,7 @@ export default function CitasPage({ user }) {
         </div>
       )}
 
-      {showForm && <CitaForm open onClose={() => setShowForm(false)} onSaved={() => toast.push("success", "Cita creada")} />}
+      {showForm && <CitaForm open onClose={() => setShowForm(false)} onSaved={() => { toast.push("success", "Cita creada"); cargar(); }} />}
 
       {/* Reprogramación */}
       {editando && (

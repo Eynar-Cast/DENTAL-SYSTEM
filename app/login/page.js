@@ -2,15 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-const PARTICULAS = Array.from({ length: 22 }, (_, i) => ({
-  id: i,
-  left: Math.random() * 100,
-  size: Math.random() * 4 + 2,
-  duration: Math.random() * 12 + 10,
-  delay: Math.random() * 8,
-  opacity: Math.random() * 0.4 + 0.15,
-}));
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,6 +10,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [particulas, setParticulas] = useState([]);
+  const [anio, setAnio] = useState(null);
+
+  // Las partículas dependen de Math.random y el año del reloj local: se
+  // generan solo en el cliente para evitar el mismatch de hidratación.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setParticulas(
+      Array.from({ length: 22 }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        size: Math.random() * 4 + 2,
+        duration: Math.random() * 12 + 10,
+        delay: Math.random() * 8,
+        opacity: Math.random() * 0.4 + 0.15,
+      }))
+    );
+    setAnio(new Date().getFullYear());
+  }, []);
 
   useEffect(() => {
     // Si ya hay sesión, ir directo al dashboard
@@ -57,7 +68,10 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrapper">
-      {PARTICULAS.map((p) => (
+      <div className="login-theme-toggle">
+        <ThemeToggle />
+      </div>
+      {particulas.map((p) => (
         <span
           key={p.id}
           className="particle"
@@ -144,7 +158,7 @@ export default function LoginPage() {
 
         <hr className="divider" />
         <p style={{ textAlign: "center", fontSize: 12, color: "var(--text-faint)", margin: 0 }}>
-          Smilesoft © {new Date().getFullYear()} — Consultorio dental ·{" "}
+          Smilesoft © {anio || new Date().getFullYear()} — Consultorio dental ·{" "}
           <a href="/docs" style={{ color: "var(--accent-soft)", textDecoration: "none" }}>
             Documentación API
           </a>

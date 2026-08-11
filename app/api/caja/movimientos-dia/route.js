@@ -13,14 +13,16 @@ export async function GET() {
     `SELECT id_caja FROM caja WHERE estado = 'abierta' ORDER BY id_caja DESC LIMIT 1`
   );
 
-  // Si no hay caja abierta, se muestran los movimientos de hoy
-  let whereCobro = `DATE(fecha_hora) = CURRENT_DATE AND anulado = FALSE`;
-  let whereGasto = `DATE(fecha) = CURRENT_DATE AND anulado = FALSE`;
+  // Si no hay caja abierta, se muestran los movimientos de hoy.
+  // Se incluyen los anulados para que la vista refleje el estado real y el
+  // historial de anulaciones de la jornada.
+  let whereCobro = `DATE(fecha_hora) = CURRENT_DATE`;
+  let whereGasto = `DATE(fecha) = CURRENT_DATE`;
   let params = [];
   if (cajaResult.rows.length > 0) {
     params = [cajaResult.rows[0].id_caja];
-    whereCobro = `id_caja = $1 AND anulado = FALSE`;
-    whereGasto = `id_caja = $1 AND anulado = FALSE`;
+    whereCobro = `id_caja = $1`;
+    whereGasto = `id_caja = $1`;
   }
 
   const cobros = await query(

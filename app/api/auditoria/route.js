@@ -1,6 +1,7 @@
 import { requireAuth, requireRoles } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
+import { validarRangoFechas } from "@/lib/validations";
 
 export async function GET(request) {
   const session = await requireAuth();
@@ -14,6 +15,9 @@ export async function GET(request) {
   const idUsuario = searchParams.get("id_usuario");
   const limit = Math.min(Number(searchParams.get("limit")) || 50, 200);
   const offset = Number(searchParams.get("offset")) || 0;
+
+  const errFechas = validarRangoFechas(desde, hasta);
+  if (errFechas) return jsonError(errFechas, 400);
 
   const condiciones = [];
   const params = [];

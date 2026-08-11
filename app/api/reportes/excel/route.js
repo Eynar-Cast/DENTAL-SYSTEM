@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import { requireAuth, requireRoles } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError } from "@/lib/http";
+import { validarRangoFechas } from "@/lib/validations";
 
 // Exporta reportes a Excel. Parámetros: ?tipo=...&desde=...&hasta=...
 // Tipos: resumen-dia, movimientos, pacientes-atendidos, tratamientos,
@@ -16,6 +17,7 @@ const REPORTES = {
     FROM generate_series(COALESCE($1::date, CURRENT_DATE - INTERVAL '30 days'), COALESCE($2::date, CURRENT_DATE), '1 day') d(fecha)
     LEFT JOIN (SELECT cb.fecha_hora::date AS fecha, SUM(cb.monto) AS ingresos FROM cobro cb WHERE cb.anulado=FALSE GROUP BY 1) i ON i.fecha=d.fecha
     LEFT JOIN (SELECT g.fecha::date AS fecha, SUM(g.monto) AS egresos FROM gasto g WHERE g.anulado=FALSE GROUP BY 1) e ON e.fecha=d.fecha
+    WHERE COALESCE(i.ingresos,0) + COALESCE(e.egresos,0) > 0
     ORDER BY d.fecha DESC`,
     columnas: ["Fecha", "Ingresos", "Egresos", "Utilidad"],
     map: (r) => [r.fecha, Number(r.ingresos), Number(r.egresos), Number(r.utilidad)],
@@ -55,34 +57,46 @@ const REPORTES = {
       JOIN personal p ON p.id_personal=c.id_personal
       JOIN persona per ON per.id_persona=p.id_persona
       JOIN procedimiento pr ON pr.id_procedimiento=ap.id_procedimiento
-      WHERE ($1::date IS NULL OR c.fecha_hora::date>=$1::date) AND ($2::date IS NULL OR c.fecha_hora::date<=$2::date)
+      JOIN estado_cita e ON e.id_estado=c.id_estado
+      WHERE e.descripcion='atendida'
+        AND ($1::date IS NULL OR c.fecha_hora::date>=$1::date) AND ($2::date IS NULL OR c.fecha_hora::date<=$2::date)
       GROUP BY 1,2,3 ORDER BY 1 DESC`,
     columnas: ["Fecha", "Tratamiento", "Odontólogo", "Cantidad"],
     map: (r) => [r.fecha, r.tratamiento, r.odontologo, Number(r.cantidad)],
   },
   "ranking-tratamientos": {
     titulo: "Ranking de tratamientos",
-    sql: () => `SELECT pr.nombre AS tratamiento, SUM(ap.cantidad) AS total
-      FROM atencion_procedimiento ap JOIN procedimiento pr ON pr.id_procedimiento=ap.id_procedimiento
+    sql: (desde, hasta) => `SELECT pr.nombre AS tratamiento, SUM(ap.cantidad) AS total
+      FROM atencion_procedimiento ap
+      JOIN atencion a ON a.id_atencion=ap.id_atencion
+      JOIN cita c ON c.id_cita=a.id_cita
+      JOIN estado_cita e ON e.id_estado=c.id_estado
+      JOIN procedimiento pr ON pr.id_procedimiento=ap.id_procedimiento
+      WHERE e.descripcion='atendida'
+        AND ($1::date IS NULL OR c.fecha_hora::date>=$1::date) AND ($2::date IS NULL OR c.fecha_hora::date<=$2::date)
       GROUP BY 1 ORDER BY total DESC LIMIT 10`,
     columnas: ["Tratamiento", "Total realizados"],
     map: (r) => [r.tratamiento, Number(r.total)],
   },
   "metodos-pago": {
     titulo: "Métodos de pago utilizados",
-    sql: () => `SELECT mp.descripcion AS metodo, COUNT(*) AS cantidad, COALESCE(SUM(cb.monto),0) AS total
+    sql: (desde, hasta) => `SELECT mp.descripcion AS metodo, COUNT(*) AS cantidad, COALESCE(SUM(cb.monto),0) AS total
       FROM cobro cb JOIN metodo_pago mp ON mp.id_metodo_pago=cb.id_metodo_pago
-      WHERE cb.anulado=FALSE GROUP BY 1 ORDER BY total DESC`,
+      WHERE cb.anulado=FALSE
+        AND ($1::date IS NULL OR cb.fecha_hora::date>=$1::date) AND ($2::date IS NULL OR cb.fecha_hora::date<=$2::date)
+      GROUP BY 1 ORDER BY total DESC`,
     columnas: ["Método de pago", "Cantidad", "Total"],
     map: (r) => [r.metodo, Number(r.cantidad), Number(r.total)],
   },
   "cierres-caja": {
     titulo: "Historial de cierres de caja",
-    sql: () => `SELECT c.id_caja, c.fecha_apertura, c.fecha_cierre, c.monto_inicial,
+    sql: (desde, hasta) => `SELECT c.id_caja, c.fecha_apertura, c.fecha_cierre, c.monto_inicial,
       (SELECT COALESCE(SUM(cb.monto),0) FROM cobro cb WHERE cb.id_caja=c.id_caja AND cb.anulado=FALSE) AS ingresos,
       (SELECT COALESCE(SUM(g.monto),0) FROM gasto g WHERE g.id_caja=c.id_caja AND g.anulado=FALSE) AS egresos,
       c.monto_declarado_cierre, c.diferencia
-      FROM caja c WHERE c.estado='cerrada' ORDER BY c.fecha_cierre DESC LIMIT 100`,
+      FROM caja c WHERE c.estado='cerrada'
+        AND ($1::date IS NULL OR c.fecha_cierre::date>=$1::date) AND ($2::date IS NULL OR c.fecha_cierre::date<=$2::date)
+      ORDER BY c.fecha_cierre DESC LIMIT 100`,
     columnas: ["# Caja", "Apertura", "Cierre", "Monto inicial", "Ingresos", "Egresos", "Declarado", "Diferencia"],
     map: (r) => [r.id_caja, r.fecha_apertura, r.fecha_cierre, Number(r.monto_inicial), Number(r.ingresos), Number(r.egresos), Number(r.monto_declarado_cierre), Number(r.diferencia)],
   },
@@ -97,6 +111,9 @@ export async function GET(request) {
   const tipo = searchParams.get("tipo") || "resumen-dia";
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
+
+  const errFechas = validarRangoFechas(desde, hasta);
+  if (errFechas) return jsonError(errFechas, 400);
 
   const definicion = REPORTES[tipo];
   if (!definicion) return jsonError("Tipo de reporte no válido", 400);

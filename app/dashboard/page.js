@@ -11,8 +11,12 @@ import { formatMoneda, formatFechaHora, saludoSegunHora } from "@/lib/utils";
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [ahora, setAhora] = useState(null);
 
   useEffect(() => {
+    // Se calcula en el cliente para evitar mismatches de hidratación.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAhora(new Date());
     apiGet("/api/dashboard/resumen")
       .then(setData)
       .catch((e) => setError(e.message));
@@ -31,9 +35,9 @@ export default function DashboardPage() {
     <div>
       <div className="welcome-banner">
         <div>
-          <h2>{saludoSegunHora()}, bienvenido al panel</h2>
+          <h2>{ahora ? saludoSegunHora(ahora) : "Bienvenido"}, al panel</h2>
           <p>
-            Resumen de operaciones del consultorio para hoy, {formatFechaHora(new Date().toISOString())}.
+            Resumen de operaciones del consultorio para hoy, {ahora ? formatFechaHora(ahora.toISOString()) : ""}.
           </p>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -47,19 +51,25 @@ export default function DashboardPage() {
       <div className="mini-stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
         <StatCard icon="👤" label="Pacientes atendidos hoy" value={data.pacientes_atendidos_hoy} accent="teal" />
         <StatCard icon="📅" label="Citas agendadas hoy" value={data.citas_agendadas_hoy} accent="blue" />
-        <StatCard icon="₿" label="Ingresos del día" value={formatMoneda(data.ingresos_dia)} accent="green" />
-        <StatCard icon="◎" label="Gastos del día" value={formatMoneda(data.egresos_dia)} accent="rose" />
-        <StatCard icon="📈" label="Utilidad del día" value={formatMoneda(data.utilidad_dia)} accent="violet" />
+        {data.finanzas && (
+          <>
+            <StatCard icon="₿" label="Ingresos del día" value={formatMoneda(data.ingresos_dia)} accent="green" />
+            <StatCard icon="◎" label="Gastos del día" value={formatMoneda(data.egresos_dia)} accent="rose" />
+            <StatCard icon="📈" label="Utilidad del día" value={formatMoneda(data.utilidad_dia)} accent="violet" />
+          </>
+        )}
       </div>
 
       <div className="mini-stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
-        <StatCard
-          icon="💵"
-          label="Estado de caja"
-          value={data.caja ? "Abierta" : "Cerrada"}
-          accent={data.caja ? "green" : "amber"}
-          sub={data.caja ? `Inicial ${formatMoneda(data.caja.monto_inicial)} · ${data.caja.usuario}` : "Abrir caja para operar"}
-        />
+        {data.finanzas && (
+          <StatCard
+            icon="💵"
+            label="Estado de caja"
+            value={data.caja ? "Abierta" : "Cerrada"}
+            accent={data.caja ? "green" : "amber"}
+            sub={data.caja ? `Inicial ${formatMoneda(data.caja.monto_inicial)} · ${data.caja.usuario}` : "Abrir caja para operar"}
+          />
+        )}
         <StatCard icon="▣" label="Pacientes activos" value={data.pacientes_activos} accent="blue" />
       </div>
 

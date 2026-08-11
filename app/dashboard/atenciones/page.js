@@ -14,6 +14,7 @@ import { formatFechaHora, formatMoneda } from "@/lib/utils";
 export default function AtencionesPage({ user }) {
   const { esOdontologo, esAdmin } = usePermisos(user);
   const puedeRegistrar = esOdontologo || esAdmin;
+  const puedeVer = puedeRegistrar;
 
   const [atenciones, setAtenciones] = useState(null);
   const [desde, setDesde] = useState("");
@@ -36,6 +37,7 @@ export default function AtencionesPage({ user }) {
   }
 
   useEffect(() => {
+    if (!puedeVer) return;
     let activo = true;
     const params = new URLSearchParams();
     if (desde) params.set("desde", desde);
@@ -45,7 +47,11 @@ export default function AtencionesPage({ user }) {
       .catch((e) => { if (activo) toast.push("error", e.message); });
     return () => { activo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [desde, hasta]);
+  }, [desde, hasta, puedeVer]);
+
+  if (!puedeVer) {
+    return <div className="card"><EmptyState icon="◆" message="Solo administradores y odontólogos pueden ver atenciones" /></div>;
+  }
 
   async function verDetalle(id) {
     setDetalle(null);
@@ -73,7 +79,6 @@ export default function AtencionesPage({ user }) {
 
       <div className="mini-stats">
         <StatCard icon="◆" label="Atenciones en vista" value={atenciones.length} accent="teal" />
-        <StatCard icon="☑" label="Semanas de cobertura" value="—" accent="blue" />
       </div>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>

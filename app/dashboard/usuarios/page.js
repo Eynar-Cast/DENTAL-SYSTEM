@@ -20,6 +20,7 @@ export default function UsuariosPage({ user }) {
   const [usuarios, setUsuarios] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editar, setEditar] = useState(null);
+  const [cambiarPass, setCambiarPass] = useState(null);
   const [confirmEstado, setConfirmEstado] = useState(null);
   const toast = useToast();
 
@@ -32,13 +33,14 @@ export default function UsuariosPage({ user }) {
   }
 
   useEffect(() => {
+    if (!esAdmin) return;
     let activo = true;
     apiGet("/api/usuarios")
       .then((data) => { if (activo) setUsuarios(data); })
       .catch((e) => { if (activo) toast.push("error", e.message); });
     return () => { activo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [esAdmin]);
 
   async function cambiarEstado(u) {
     setConfirmEstado(null);
@@ -57,6 +59,16 @@ export default function UsuariosPage({ user }) {
       toast.push("success", "Roles actualizados");
       setEditar(null);
       cargar();
+    } catch (e) {
+      toast.push("error", e.message);
+    }
+  }
+
+  async function guardarPassword(u, password) {
+    try {
+      await apiPatch(`/api/usuarios/${u.id_usuario}/password`, { password });
+      toast.push("success", "Contraseña actualizada");
+      setCambiarPass(null);
     } catch (e) {
       toast.push("error", e.message);
     }
@@ -112,6 +124,7 @@ export default function UsuariosPage({ user }) {
                   <td><Badge>{u.activo ? "activo" : "inactivo"}</Badge></td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                     <button className="btn btn-ghost btn-sm" style={{ marginRight: 6 }} onClick={() => setEditar(u)}>Roles</button>
+                    <button className="btn btn-ghost btn-sm" style={{ marginRight: 6 }} onClick={() => setCambiarPass(u)}>Contraseña</button>
                     <button className="btn btn-outline-accent btn-sm" onClick={() => setConfirmEstado(u)}>
                       {u.activo ? "Desactivar" : "Activar"}
                     </button>
@@ -128,6 +141,8 @@ export default function UsuariosPage({ user }) {
       {editar && (
         <EditarRoles usuario={editar} onClose={() => setEditar(null)} onSave={(roles) => guardarRoles(editar, roles)} />
       )}
+
+      {cambiarPass && <CambiarPassword usuario={cambiarPass} onClose={() => setCambiarPass(null)} onSave={(password) => guardarPassword(cambiarPass, password)} />}
 
       <ConfirmDialog
         open={!!confirmEstado}
@@ -248,6 +263,52 @@ function UsuarioForm({ onClose, onSaved }) {
           )}
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function CambiarPassword({ usuario, onClose, onSave }) {
+  const [password, setPassword] = useState("");
+  const [confirmar, setConfirmar] = useState("");
+  const [error, setError] = useState("");
+
+  function guardar() {
+    if (!password || password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    if (password !== confirmar) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+    onSave(password);
+    onClose();
+  }
+
+  return (
+    <Modal open={true} title={`Cambiar contraseña de ${usuario.nombres} ${usuario.apellidos}`} onClose={onClose}
+      footer={
+        <>
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={guardar}>Guardar contraseña</button>
+        </>
+      }>
+      <div style={{ display: "flex", gap: 14, flexDirection: "column" }}>
+        {error && (
+          <div style={{ padding: "10px 12px", background: "var(--danger-ghost)", border: "1px solid rgba(251,113,133,0.35)", color: "var(--danger)", borderRadius: 10, fontSize: 13 }}>{error}</div>
+        )}
+        <div>
+          <label className="label">Nueva contraseña *</label>
+          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div>
+          <label className="label">Confirmar contraseña *</label>
+          <input className="input" type="password" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} placeholder="Repite la contraseña" />
+        </div>
+        <p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>
+          El usuario deberá usar la nueva contraseña en su próximo inicio de sesión.
+        </p>
+      </div>
     </Modal>
   );
 }

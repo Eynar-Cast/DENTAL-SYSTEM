@@ -308,6 +308,22 @@ CREATE INDEX idx_gasto_fecha ON gasto(fecha);
 CREATE INDEX idx_gasto_caja  ON gasto(id_caja);
 
 -- ============================================================
+-- ÍNDICES DE RENDIMIENTO PARA CONSULTAS FRECUENTES
+-- (los cast ::date y los filtros de anulados no usan los índices base)
+-- ============================================================
+
+CREATE INDEX idx_cobro_fecha_dia ON cobro ((fecha_hora::date));
+CREATE INDEX idx_gasto_fecha_dia ON gasto ((fecha::date));
+CREATE INDEX idx_cita_fecha_dia ON cita ((fecha_hora::date));
+CREATE INDEX idx_auditoria_fecha_dia ON auditoria ((fecha_hora::date));
+
+CREATE INDEX idx_cobro_anulado_fecha_dia ON cobro ((fecha_hora::date)) WHERE anulado = FALSE;
+CREATE INDEX idx_gasto_anulado_fecha_dia ON gasto ((fecha::date)) WHERE anulado = FALSE;
+
+CREATE INDEX idx_cobro_presupuesto_anulado ON cobro (id_presupuesto) WHERE anulado = FALSE;
+CREATE INDEX idx_presupuesto_estado ON presupuesto (estado);
+
+-- ============================================================
 -- DATOS INICIALES (seed)
 -- ============================================================
 

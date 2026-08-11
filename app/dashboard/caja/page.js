@@ -13,7 +13,8 @@ import { usePermisos } from "@/components/ui/DashboardShell";
 import { formatFechaHora, formatMoneda, fechaHoyISO } from "@/lib/utils";
 
 export default function CajaPage({ user }) {
-  const { esAdmin } = usePermisos(user);
+  const { esAdmin, esRecepcion } = usePermisos(user);
+  const puedeCaja = esAdmin || esRecepcion;
 
   const [caja, setCaja] = useState(null);
   const [movimientos, setMovimientos] = useState(null);
@@ -25,6 +26,7 @@ export default function CajaPage({ user }) {
   const [showCobro, setShowCobro] = useState(null);
   const [showCierre, setShowCierre] = useState(false);
   const [confirmAnular, setConfirmAnular] = useState(null);
+  const [operando, setOperando] = useState(false);
 
   const toast = useToast();
 
@@ -43,12 +45,19 @@ export default function CajaPage({ user }) {
   }
 
   useEffect(() => {
+    if (!puedeCaja) return;
     cargarTodo();
     apiGet("/api/metodos-pago").then(setMetodos).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [puedeCaja]);
+
+  if (!puedeCaja) {
+    return <div className="card"><EmptyState icon="₿" message="Solo administradores y recepción pueden operar la caja" /></div>;
+  }
 
   async function abrirCaja(monto) {
+    if (operando) return;
+    setOperando(true);
     try {
       await apiPost("/api/caja/apertura", { monto_inicial: Number(monto) });
       toast.push("success", "Caja abierta");
@@ -56,10 +65,14 @@ export default function CajaPage({ user }) {
       cargarTodo();
     } catch (e) {
       toast.push("error", e.message);
+    } finally {
+      setOperando(false);
     }
   }
 
   async function cobrar({ idPresupuesto, monto, idMetodo }) {
+    if (operando) return;
+    setOperando(true);
     try {
       await apiPost("/api/cobros", { id_presupuesto: Number(idPresupuesto), id_metodo_pago: Number(idMetodo), monto: Number(monto) });
       toast.push("success", "Pago registrado");
@@ -67,10 +80,14 @@ export default function CajaPage({ user }) {
       cargarTodo();
     } catch (e) {
       toast.push("error", e.message);
+    } finally {
+      setOperando(false);
     }
   }
 
   async function cerrarCaja(monto) {
+    if (operando) return;
+    setOperando(true);
     try {
       await apiPost("/api/caja/cierre", { monto_declarado: Number(monto) });
       toast.push("success", "Caja cerrada");
@@ -78,6 +95,8 @@ export default function CajaPage({ user }) {
       cargarTodo();
     } catch (e) {
       toast.push("error", e.message);
+    } finally {
+      setOperando(false);
     }
   }
 
@@ -253,7 +272,14 @@ export default function CajaPage({ user }) {
           footer={
             <>
               <button className="btn btn-ghost" onClick={() => setConfirmAnular(null)}>Cancelar</button>
-              <button className="btn btn-danger" onClick={() => anularMovimiento({ ...confirmAnular, motivoAnulacion: document.getElementById("motivo-anulacion")?.value || "Anulación manual" })}>
+              <button className="btn btn-danger" onClick={() => {
+                const motivo = document.getElementById("motivo-anulacion")?.value || "";
+                if (!motivo.trim()) {
+                  toast.push("error", "El motivo de anulación es obligatorio");
+                  return;
+                }
+                anularMovimiento({ ...confirmAnular, motivoAnulacion: motivo });
+              }}>
                 Anular movimiento
               </button>
             </>
@@ -321,9 +347,20 @@ function PresupuestoForm({ onClose, onSaved }) {
     setError("");
     setLoading(true);
     try {
+      const detalleValido = detalle.filter((d) => d.id_procedimiento);
+      if (detalleValido.length === 0) {
+        setError("Agrega al menos un procedimiento");
+        setLoading(false);
+        return;
+      }
+      if (detalleValido.some((d) => Number(d.cantidad) <= 0 || !Number.isInteger(Number(d.cantidad)))) {
+        setError("La cantidad de procedimientos debe ser un número entero mayor a 0");
+        setLoading(false);
+        return;
+      }
       const body = {
         id_paciente: Number(idPaciente),
-        detalle: detalle.filter((d) => d.id_procedimiento).map((d) => ({ id_procedimiento: Number(d.id_procedimiento), cantidad: Number(d.cantidad) })),
+        detalle: detalleValido.map((d) => ({ id_procedimiento: Number(d.id_procedimiento), cantidad: Number(d.cantidad) })),
       };
       await apiPost("/api/presupuestos", body);
       onSaved();
@@ -360,14 +397,14 @@ function PresupuestoForm({ onClose, onSaved }) {
 
         <h4 style={{ margin: "16px 0 8px", fontSize: 14 }}>Detalle de procedimientos</h4>
         {detalle.map((d, i) => (
-          <div key={i} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "center" }}>
+          <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8, alignItems: "center" }}>
             <select className="select" value={d.id_procedimiento} onChange={(e) => setDet(i, "id_procedimiento", e.target.value)} style={{ flex: 1 }} required={i === 0}>
               <option value="">Procedimiento...</option>
               {procedimientos.map((p) => (
                 <option key={p.id_procedimiento} value={p.id_procedimiento}>{p.nombre} — {formatMoneda(p.precio_actual)}</option>
               ))}
             </select>
-            <input className="input" type="number" min="1" value={d.cantidad} onChange={(e) => setDet(i, "cantidad", e.target.value)} style={{ width: 90 }} required />
+            <input className="input" type="number" min="1" step="1" value={d.cantidad} onChange={(e) => setDet(i, "cantidad", e.target.value)} style={{ width: 90 }} required />
             <button type="button" className="icon-btn" onClick={() => setDetalle(detalle.filter((_, x) => x !== i))} aria-label="Quitar">✕</button>
           </div>
         ))}

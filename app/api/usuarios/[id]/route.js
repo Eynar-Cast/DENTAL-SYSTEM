@@ -3,6 +3,8 @@ import { query, withTransaction } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
 import { registrarAuditoria } from "@/lib/audit";
 
+const ROLES_PERMITIDOS = ["admin", "recepcionista", "odontologo"];
+
 export async function PATCH(request, context) {
   const session = await requireAuth();
   if (!session) return jsonError("No autenticado", 401);
@@ -15,11 +17,52 @@ export async function PATCH(request, context) {
   const body = await request.json().catch(() => ({}));
 
   const usuarioResult = await query(
-    `SELECT id_usuario, email, activo FROM usuario WHERE id_usuario = $1`,
+    `SELECT u.id_usuario, u.email, u.activo,
+            COALESCE(array_agg(r.nombre_rol) FILTER (WHERE r.nombre_rol IS NOT NULL), '{}') AS roles
+     FROM usuario u
+     LEFT JOIN usuario_rol ur ON ur.id_usuario = u.id_usuario
+     LEFT JOIN rol r ON r.id_rol = ur.id_rol
+     WHERE u.id_usuario = $1
+     GROUP BY u.id_usuario, u.email, u.activo`,
     [idUsuario]
   );
   if (usuarioResult.rows.length === 0) return jsonError("Usuario no encontrado", 404);
   const anterior = usuarioResult.rows[0];
+
+  if (Array.isArray(body.roles)) {
+    if (body.roles.length === 0) return jsonError("Selecciona al menos un rol", 400);
+    const invalidos = body.roles.filter((r) => !ROLES_PERMITIDOS.includes(r));
+    if (invalidos.length > 0) return jsonError("Uno de los roles seleccionados no es válido", 400);
+  }
+
+  // Salvaguardas anti-bloqueo
+  const esSiMismo = idUsuario === session.idUsuario;
+  if (esSiMismo) {
+    if (typeof body.activo === "boolean" && body.activo === false) {
+      return jsonError("No puedes desactivar tu propia cuenta", 400);
+    }
+    if (Array.isArray(body.roles) && !body.roles.includes("admin")) {
+      return jsonError("No puedes quitarte tu propio rol de administrador", 400);
+    }
+  }
+
+  const rolesActuales = anterior.roles || [];
+  const pierdeAdmin =
+    rolesActuales.includes("admin") &&
+    ((typeof body.activo === "boolean" && body.activo === false) ||
+      (Array.isArray(body.roles) && !body.roles.includes("admin")));
+
+  if (pierdeAdmin) {
+    const adminsResult = await query(
+      `SELECT COUNT(*) FROM usuario u
+       JOIN usuario_rol ur ON ur.id_usuario = u.id_usuario
+       JOIN rol r ON r.id_rol = ur.id_rol
+       WHERE r.nombre_rol = 'admin' AND u.activo = TRUE`
+    );
+    if (Number(adminsResult.rows[0].count) <= 1) {
+      return jsonError("No puedes desactivar ni quitar el rol del último administrador activo", 400);
+    }
+  }
 
   if (typeof body.activo === "boolean") {
     await query(`UPDATE usuario SET activo = $1 WHERE id_usuario = $2`, [body.activo, idUsuario]);

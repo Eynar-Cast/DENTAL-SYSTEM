@@ -17,12 +17,23 @@ export async function PATCH(request, context) {
   const body = await request.json().catch(() => ({}));
 
   const citaResult = await query(
-    `SELECT c.id_cita, c.fecha_hora, e.descripcion AS estado_actual FROM cita c
+    `SELECT c.id_cita, c.id_personal, c.fecha_hora, e.descripcion AS estado_actual FROM cita c
      JOIN estado_cita e ON e.id_estado = c.id_estado
      WHERE c.id_cita = $1`,
     [idCita]
   );
   if (citaResult.rows.length === 0) return jsonError("Cita no encontrada", 404);
+
+  // El odontólogo solo puede modificar sus propias citas
+  if (requireRoles(session, ["odontologo"]) && !requireRoles(session, ["admin"])) {
+    const personalResult = await query(
+      `SELECT id_personal FROM personal WHERE id_persona = $1`,
+      [session.idPersona || null]
+    );
+    if (personalResult.rows.length === 0 || personalResult.rows[0].id_personal !== citaResult.rows[0].id_personal) {
+      return jsonError("Solo puedes modificar tus propias citas", 403);
+    }
+  }
 
   const anterior = citaResult.rows[0];
 

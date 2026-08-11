@@ -2,7 +2,7 @@ import { requireAuth, requireRoles, obtenerIP } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
 import { registrarAuditoria } from "@/lib/audit";
-import { textoLimpio } from "@/lib/validations";
+import { textoLimpio, validarRangoFechas } from "@/lib/validations";
 
 export async function POST(request) {
   const session = await requireAuth();
@@ -25,13 +25,25 @@ export async function POST(request) {
 
   // Solo sobre citas en estado 'atendida'
   const citaResult = await query(
-    `SELECT c.id_cita, c.id_paciente, e.descripcion AS estado FROM cita c
+    `SELECT c.id_cita, c.id_paciente, c.id_personal, e.descripcion AS estado FROM cita c
      JOIN estado_cita e ON e.id_estado = c.id_estado WHERE c.id_cita = $1`,
     [idCita]
   );
   if (citaResult.rows.length === 0) return jsonError("La cita no existe", 404);
   if (citaResult.rows[0].estado !== "atendida") {
     return jsonError("La cita debe estar en estado 'atendida' para registrar la atención", 400);
+  }
+
+  // El odontólogo solo puede registrar atenciones de sus propias citas
+  if (requireRoles(session, ["odontologo"]) && !requireRoles(session, ["admin"])) {
+    const cita = citaResult.rows[0];
+    const personalResult = await query(
+      `SELECT id_personal FROM personal WHERE id_persona = $1`,
+      [session.idPersona || null]
+    );
+    if (personalResult.rows.length === 0 || personalResult.rows[0].id_personal !== cita.id_personal) {
+      return jsonError("Solo puedes registrar atenciones de tus propias citas", 403);
+    }
   }
 
   // Ya existe una atención para esta cita
@@ -43,6 +55,21 @@ export async function POST(request) {
   const signos = Array.isArray(body.signos_vitales) ? body.signos_vitales : [];
   const diagnosticos = Array.isArray(body.diagnosticos) ? body.diagnosticos : [];
   const procedimientos = Array.isArray(body.procedimientos) ? body.procedimientos : [];
+
+  for (const sv of signos) {
+    if (sv.id_tipo && sv.valor !== undefined && !Number.isFinite(Number(sv.valor))) {
+      return jsonError("El valor de los signos vitales debe ser numérico", 400);
+    }
+  }
+  for (const proc of procedimientos) {
+    if (!proc.id_procedimiento) continue;
+    if (!Number.isInteger(Number(proc.cantidad)) || Number(proc.cantidad) <= 0) {
+      return jsonError("La cantidad de procedimientos debe ser un entero mayor a cero", 400);
+    }
+    if (Number(proc.cantidad) > 1000) {
+      return jsonError("La cantidad máxima por procedimiento es 1000", 400);
+    }
+  }
 
   try {
     const result = await withTransaction(async (client) => {
@@ -123,6 +150,9 @@ export async function GET(request) {
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
 
+  const errFechas = validarRangoFechas(desde, hasta);
+  if (errFechas) return jsonError(errFechas, 400);
+
   let sql = `SELECT a.id_atencion, a.motivo_consulta, c.fecha_hora,
                     per_pac.nombres AS paciente_nombres, per_pac.apellidos AS paciente_apellidos,
                     per_odo.nombres AS odontologo_nombres, per_odo.apellidos AS odontologo_apellidos
@@ -141,6 +171,17 @@ export async function GET(request) {
   if (hasta) {
     params.push(hasta);
     sql += ` AND c.fecha_hora::date <= $${params.length}`;
+  }
+  // El odontólogo solo ve sus propias atenciones
+  if (requireRoles(session, ["odontologo"]) && !requireRoles(session, ["admin"])) {
+    const personalResult = await query(
+      `SELECT id_personal FROM personal WHERE id_persona = $1`,
+      [session.idPersona || null]
+    );
+    if (personalResult.rows.length > 0) {
+      params.push(personalResult.rows[0].id_personal);
+      sql += ` AND pe.id_personal = $${params.length}`;
+    }
   }
   sql += ` ORDER BY c.fecha_hora DESC LIMIT 200`;
 

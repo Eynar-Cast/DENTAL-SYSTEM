@@ -53,6 +53,7 @@ export async function POST(request) {
 
   if (!Number.isInteger(idPaciente)) return jsonError("Selecciona un paciente", 400);
   if (detalle.length === 0) return jsonError("Agrega al menos un procedimiento al presupuesto", 400);
+  if (detalle.length > 50) return jsonError("El presupuesto no puede tener más de 50 procedimientos", 400);
 
   const idsProcedimiento = detalle.map((d) => Number(d.id_procedimiento));
   for (const d of detalle) {
@@ -61,6 +62,9 @@ export async function POST(request) {
     }
     if (!esEnteroPositivo(d.cantidad)) {
       return jsonError("La cantidad debe ser un entero mayor a cero", 400);
+    }
+    if (Number(d.cantidad) > 1000) {
+      return jsonError("La cantidad máxima por procedimiento es 1000", 400);
     }
   }
 

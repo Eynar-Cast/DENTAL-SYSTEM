@@ -2,7 +2,7 @@ import { requireAuth, requireRoles, obtenerIP } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
 import { registrarAuditoria } from "@/lib/audit";
-import { textoLimpio } from "@/lib/validations";
+import { textoLimpio, esFechaISO } from "@/lib/validations";
 
 export async function GET(request) {
   const session = await requireAuth();
@@ -16,6 +16,8 @@ export async function GET(request) {
   const fecha = searchParams.get("fecha");
   const idPersonal = searchParams.get("id_personal");
   const q = (searchParams.get("q") || "").trim().toLowerCase();
+
+  if (fecha && !esFechaISO(fecha)) return jsonError("La fecha no es válida", 400);
 
   let sql = `SELECT c.id_cita, c.motivo, c.fecha_hora,
                     e.id_estado, e.descripcion AS estado,

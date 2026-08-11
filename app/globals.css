@@ -47,6 +47,22 @@
   --radius: 12px;
   --radius-lg: 16px;
   --radius-sm: 8px;
+
+  /* superficies específicas (tema) */
+  --surface-input: rgba(8, 23, 37, 0.7);
+  --thead-bg: rgba(20, 48, 74, 0.5);
+  --row-hover: rgba(20, 48, 74, 0.35);
+  --row-border: rgba(94, 234, 212, 0.07);
+  --detail-bg: rgba(8, 23, 37, 0.6);
+  --code-bg: rgba(8, 23, 37, 0.85);
+  --track-bg: rgba(8, 23, 37, 0.8);
+  --surface-2: rgba(8, 23, 37, 0.5);
+  --topbar-bg: rgba(6, 16, 25, 0.82);
+  --login-card-bg: rgba(10, 25, 38, 0.82);
+  --body-gradient: radial-gradient(1200px 600px at 80% -10%, rgba(20, 48, 74, 0.55), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(15, 118, 110, 0.22), transparent 55%), var(--bg-950);
+  --login-gradient: linear-gradient(135deg, #050c14 0%, #081725 40%, #0b1d2e 70%, #0e2438 100%);
+  --welcome-bg: linear-gradient(135deg, rgba(15, 118, 110, 0.35) 0%, var(--bg-800) 60%);
 }
 
 @theme inline {
@@ -67,10 +83,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(20, 48, 74, 0.55), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(15, 118, 110, 0.22), transparent 55%),
-    var(--bg-950);
+  background: var(--body-gradient);
   color: var(--text);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -218,7 +231,7 @@ body {
   align-items: center;
   gap: 16px;
   padding: 14px 24px;
-  background: rgba(6, 16, 25, 0.82);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -240,6 +253,36 @@ body {
 .icon-btn:hover {
   color: var(--text);
   border-color: var(--border-strong);
+}
+
+/* Botón de cambio de tema (claro/oscuro) */
+.theme-toggle,
+.login-theme-toggle .theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--accent-ghost);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  color: var(--accent-soft);
+  border-color: var(--border-strong);
+  background: var(--accent-ghost);
+}
+
+.login-theme-toggle {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  z-index: 3;
 }
 
 .content-area {
@@ -311,7 +354,7 @@ body {
   overflow: hidden;
   padding: 24px 28px;
   margin-bottom: 22px;
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.35) 0%, var(--bg-800) 60%);
+  background: var(--welcome-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
@@ -355,7 +398,7 @@ table.data-table {
 }
 
 .data-table thead th {
-  background: rgba(20, 48, 74, 0.5);
+  background: var(--thead-bg);
   color: var(--accent-soft);
   text-align: left;
   padding: 12px 14px;
@@ -367,7 +410,7 @@ table.data-table {
 
 .data-table tbody td {
   padding: 11px 14px;
-  border-top: 1px solid rgba(94, 234, 212, 0.07);
+  border-top: 1px solid var(--row-border);
   vertical-align: middle;
 }
 
@@ -376,7 +419,7 @@ table.data-table {
 }
 
 .data-table tbody tr:hover {
-  background: rgba(20, 48, 74, 0.35);
+  background: var(--row-hover);
 }
 
 .data-table tbody tr.tbl-row-click {
@@ -481,7 +524,7 @@ table.data-table {
 textarea.input {
   width: 100%;
   padding: 10px 12px;
-  background: rgba(8, 23, 37, 0.7);
+  background: var(--surface-input);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text);
@@ -714,7 +757,7 @@ select.select option {
 
 .detail-item {
   padding: 12px 14px;
-  background: rgba(8, 23, 37, 0.6);
+  background: var(--detail-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
@@ -823,7 +866,7 @@ select.select option {
 .chart-bar-row .track {
   flex: 1;
   height: 10px;
-  background: rgba(8, 23, 37, 0.8);
+  background: var(--track-bg);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -843,7 +886,7 @@ select.select option {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #050c14 0%, #081725 40%, #0b1d2e 70%, #0e2438 100%);
+  background: var(--login-gradient);
 }
 
 .login-wrapper::before {
@@ -867,7 +910,7 @@ select.select option {
   width: 420px;
   max-width: 92vw;
   padding: 42px 40px;
-  background: rgba(10, 25, 38, 0.82);
+  background: var(--login-card-bg);
   backdrop-filter: blur(18px);
   border: 1px solid var(--border-strong);
   border-radius: 22px;
@@ -933,7 +976,7 @@ select.select option {
 
 /* bloque de JSON legible (auditoría, docs) */
 .json-block {
-  background: rgba(8, 23, 37, 0.85);
+  background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 14px;
@@ -954,7 +997,7 @@ select.select option {
 }
 
 .json-preview {
-  background: rgba(8, 23, 37, 0.85);
+  background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
@@ -1006,10 +1049,195 @@ select.select option {
   100% { transform: translateY(-110vh); opacity: 0; }
 }
 
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+/* Botón hamburguesa de la barra superior (solo móvil) */
+.btn-menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--accent-ghost);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.btn-menu:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+/* Fondo oscuro detrás del menú lateral en móvil */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: rgba(3, 9, 15, 0.6);
+  animation: fadeIn 0.2s ease;
+}
+
+/* La "X" para cerrar el sidebar solo en móvil */
+.sidebar-close-mobile {
+  display: none;
+}
+
+/* La flecha para colapsar el menú solo en escritorio */
+.sidebar-collapse-btn {
+  display: inline-flex;
+}
+
+/* Rejilla de doble columna del panel que colapsa en pantallas medianas */
+.resp-grid {
+  display: grid;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Scroll suave de tablas en táctiles */
+.table-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 960px) {
+  .resp-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 @media (max-width: 768px) {
+  .btn-menu { display: inline-flex; }
+  .sidebar-close-mobile { display: inline-flex; }
+  .sidebar-collapse-btn { display: none; }
   .sidebar { transform: translateX(-100%); }
   .sidebar.mobile-open { transform: translateX(0); }
   .main-area { margin-left: 0; }
   .main-area.collapsed { margin-left: 0; }
-  .content-area { padding: 16px; }
+  .content-area { padding: 14px; }
+  .topbar { padding: 10px 12px; gap: 10px; }
+  .welcome-banner { padding: 18px; }
+  .modal-overlay { padding: 16px 10px; }
+  .modal-body { padding: 16px; }
+  .modal-footer { padding: 14px 16px; flex-wrap: wrap; }
+  .stat-card { padding: 14px; }
+  .stat-card .stat-value { font-size: 22px; }
+  .chart-bar { height: 170px; }
+  .page-header h1 { font-size: 19px; }
+  .detail-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .toast { min-width: 0; right: 12px; left: 12px; max-width: none; }
+}
+
+/* ============================================================
+   TEMA CLARO
+   ============================================================ */
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-950: #eaf1f7;
+  --bg-900: #f4f9fc;
+  --bg-850: #e8f0f6;
+  --bg-800: #dbe7ef;
+  --bg-700: #c2d5e2;
+  --bg-600: #a0bcd0;
+
+  --card: rgba(255, 255, 255, 0.85);
+  --card-solid: #ffffff;
+  --card-hover: rgba(219, 231, 239, 0.9);
+
+  --accent: #0d9488;
+  --accent-strong: #0f9d91;
+  --accent-soft: #0e7f74;
+  --accent-deep: #0b6f66;
+  --accent-ghost: rgba(13, 148, 136, 0.12);
+  --accent-glow: rgba(13, 148, 136, 0.28);
+
+  --text: #0c2530;
+  --text-muted: #44606d;
+  --text-faint: rgba(68, 96, 109, 0.6);
+
+  --border: rgba(13, 148, 136, 0.18);
+  --border-strong: rgba(13, 148, 136, 0.4);
+
+  --success: #059669;
+  --success-ghost: rgba(5, 150, 105, 0.14);
+  --warning: #d97706;
+  --warning-ghost: rgba(217, 119, 6, 0.14);
+  --danger: #e11d48;
+  --danger-ghost: rgba(225, 29, 72, 0.12);
+  --info: #2563eb;
+  --info-ghost: rgba(37, 99, 235, 0.14);
+
+  --shadow-sm: 0 2px 8px rgba(13, 40, 57, 0.08);
+  --shadow-md: 0 6px 24px rgba(13, 40, 57, 0.12);
+  --shadow-lg: 0 12px 48px rgba(13, 40, 57, 0.18);
+
+  --surface-input: rgba(255, 255, 255, 0.9);
+  --thead-bg: rgba(13, 148, 136, 0.1);
+  --row-hover: rgba(13, 148, 136, 0.08);
+  --row-border: rgba(13, 148, 136, 0.12);
+  --detail-bg: rgba(224, 238, 246, 0.75);
+  --code-bg: rgba(236, 246, 250, 0.95);
+  --track-bg: rgba(13, 40, 57, 0.12);
+  --surface-2: rgba(224, 238, 246, 0.75);
+  --topbar-bg: rgba(255, 255, 255, 0.82);
+  --login-card-bg: rgba(255, 255, 255, 0.88);
+  --body-gradient: radial-gradient(1200px 600px at 80% -10%, rgba(20, 184, 166, 0.16), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(13, 148, 136, 0.08), transparent 55%), var(--bg-950);
+  --login-gradient: linear-gradient(135deg, #eef4f9 0%, #dbe7ef 45%, #c2d5e2 75%, #a0bcd0 100%);
+  --welcome-bg: linear-gradient(135deg, rgba(13, 148, 136, 0.18) 0%, var(--bg-800) 60%);
+}
+
+/* El sidebar mantiene su aspecto oscuro en ambos temas */
+[data-theme="light"] .sidebar {
+  --text: #eaf6fb;
+  --text-muted: #b9d6e2;
+  --text-faint: rgba(185, 214, 226, 0.55);
+  --accent-soft: #5eead4;
+  --border: rgba(94, 234, 212, 0.16);
+}
+
+[data-theme="light"] .data-table thead th {
+  color: var(--accent-deep);
+}
+
+[data-theme="light"] .badge-white {
+  background: var(--accent-ghost);
+  border-color: rgba(13, 148, 136, 0.3);
+  color: var(--accent-deep);
+}
+
+[data-theme="light"] .badge-slate {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+[data-theme="light"] .badge-violet,
+[data-theme="light"] .stat-accent-violet {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.3);
+}
+
+@media (max-width: 640px) {
+  .login-theme-toggle {
+    top: 12px;
+    right: 12px;
+  }
 }

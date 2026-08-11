@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useState } from "react";
 import { ToastProvider } from "./Toast";
 
 // Contexto de sesión para páginas client-side. En Next.js App Router las
@@ -45,12 +45,21 @@ import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 
 export default function DashboardShell({ user, children }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <ToastProvider>
       <UserContext.Provider value={user}>
-        <Sidebar user={user} />
-        <div className="main-area">
-          <Navbar user={user} />
+        <Sidebar
+          user={user}
+          collapsed={collapsed}
+          onToggleCollapsed={() => setCollapsed((c) => !c)}
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
+        <div className={`main-area ${collapsed ? "collapsed" : ""}`}>
+          <Navbar user={user} onOpenMenu={() => setMobileOpen(true)} />
           <main className="content-area">{children}</main>
         </div>
       </UserContext.Provider>

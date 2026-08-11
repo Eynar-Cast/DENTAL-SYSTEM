@@ -40,6 +40,18 @@ export default function AtencionForm({ open, onClose, onSaved }) {
     setError("");
     setLoading(true);
     try {
+      const procsValidos = procs.filter((p) => p.id_procedimiento);
+      if (procsValidos.some((p) => Number(p.cantidad) <= 0 || !Number.isInteger(Number(p.cantidad)))) {
+        setError("La cantidad de procedimientos debe ser un número entero mayor a 0");
+        setLoading(false);
+        return;
+      }
+      const signosValidos = signos.filter((s) => s.id_tipo && s.valor !== "");
+      if (signosValidos.some((s) => !Number.isFinite(Number(s.valor)))) {
+        setError("El valor de los signos vitales debe ser numérico");
+        setLoading(false);
+        return;
+      }
       const body = {
         atencion: {
           id_cita: Number(form.id_cita),
@@ -47,9 +59,9 @@ export default function AtencionForm({ open, onClose, onSaved }) {
           sintomas_referidos: form.sintomas_referidos,
           notas_odontologo: form.notas_odontologo,
         },
-        signos_vitales: signos.filter((s) => s.id_tipo && s.valor !== "").map((s) => ({ id_tipo: Number(s.id_tipo), valor: Number(s.valor) })),
+        signos_vitales: signosValidos.map((s) => ({ id_tipo: Number(s.id_tipo), valor: Number(s.valor) })),
         diagnosticos: dxs.filter((d) => d.codigo_diagnostico).map((d) => ({ codigo_diagnostico: d.codigo_diagnostico, observaciones: d.observaciones || null })),
-        procedimientos: procs.filter((p) => p.id_procedimiento).map((p) => ({ id_procedimiento: Number(p.id_procedimiento), cantidad: Number(p.cantidad) })),
+        procedimientos: procsValidos.map((p) => ({ id_procedimiento: Number(p.id_procedimiento), cantidad: Number(p.cantidad) })),
       };
       await apiPost("/api/atenciones", body);
       onSaved();
@@ -115,7 +127,7 @@ export default function AtencionForm({ open, onClose, onSaved }) {
 
         <h4 style={{ margin: "18px 0 10px", fontSize: 14 }}>Signos vitales</h4>
         {signos.map((s, i) => (
-          <div key={i} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "center" }}>
+          <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8, alignItems: "center" }}>
             <select className="select" value={s.id_tipo} onChange={(e) => setArray(setSignos, i, "id_tipo", e.target.value)} style={{ flex: 1 }}>
               <option value="">Tipo de signo...</option>
               {tiposSigno.map((t) => (
@@ -130,7 +142,7 @@ export default function AtencionForm({ open, onClose, onSaved }) {
 
         <h4 style={{ margin: "18px 0 10px", fontSize: 14 }}>Diagnósticos</h4>
         {dxs.map((d, i) => (
-          <div key={i} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "center" }}>
+          <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8, alignItems: "center" }}>
             <select className="select" value={d.codigo_diagnostico} onChange={(e) => setArray(setDxs, i, "codigo_diagnostico", e.target.value)} style={{ flex: 1 }}>
               <option value="">Código de diagnóstico...</option>
               {diagnosticos.map((dx) => (
@@ -144,14 +156,14 @@ export default function AtencionForm({ open, onClose, onSaved }) {
 
         <h4 style={{ margin: "18px 0 10px", fontSize: 14 }}>Procedimientos realizados</h4>
         {procs.map((p, i) => (
-          <div key={i} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "center" }}>
+          <div key={i} style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8, alignItems: "center" }}>
             <select className="select" value={p.id_procedimiento} onChange={(e) => setArray(setProcs, i, "id_procedimiento", e.target.value)} style={{ flex: 1 }}>
               <option value="">Procedimiento...</option>
               {procedimientos.map((pr) => (
                 <option key={pr.id_procedimiento} value={pr.id_procedimiento}>{pr.nombre} — Bs {pr.precio_actual}</option>
               ))}
             </select>
-            <input className="input" type="number" min="1" value={p.cantidad} onChange={(e) => setArray(setProcs, i, "cantidad", e.target.value)} style={{ width: 90 }} />
+            <input className="input" type="number" min="1" step="1" value={p.cantidad} onChange={(e) => setArray(setProcs, i, "cantidad", e.target.value)} style={{ width: 90 }} />
             <button type="button" className="icon-btn" onClick={() => setProcs(procs.filter((_, x) => x !== i))} aria-label="Quitar">✕</button>
           </div>
         ))}

@@ -1,6 +1,7 @@
 import { requireAuth, requireRoles } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
+import { validarRangoFechas } from "@/lib/validations";
 
 export async function GET(request) {
   const session = await requireAuth();
@@ -10,6 +11,8 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
+  const errFechas = validarRangoFechas(desde, hasta);
+  if (errFechas) return jsonError(errFechas, 400);
 
   let sql = `SELECT c.fecha_hora::date AS fecha,
                     pr.nombre AS tratamiento,
@@ -21,7 +24,8 @@ export async function GET(request) {
              JOIN personal p ON p.id_personal = c.id_personal
              JOIN persona per ON per.id_persona = p.id_persona
              JOIN procedimiento pr ON pr.id_procedimiento = ap.id_procedimiento
-             WHERE 1=1`;
+             JOIN estado_cita e ON e.id_estado = c.id_estado
+             WHERE e.descripcion = 'atendida'`;
   const params = [];
   if (desde) { params.push(desde); sql += ` AND c.fecha_hora::date >= $${params.length}`; }
   if (hasta) { params.push(hasta); sql += ` AND c.fecha_hora::date <= $${params.length}`; }

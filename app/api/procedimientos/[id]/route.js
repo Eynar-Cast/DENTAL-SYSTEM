@@ -27,6 +27,8 @@ export async function PATCH(request, context) {
   const nombre = body.nombre !== undefined ? textoLimpio(body.nombre) : anterior.nombre;
   const descripcion = body.descripcion !== undefined ? textoLimpio(body.descripcion) : anterior.descripcion;
 
+  if (!nombre) return jsonError("El nombre del procedimiento es obligatorio", 400);
+
   await query(
     `UPDATE procedimiento SET nombre = $1, descripcion = $2 WHERE id_procedimiento = $3`,
     [nombre, descripcion || null, idProcedimiento]

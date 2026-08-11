@@ -22,21 +22,31 @@ export async function POST(request) {
     return jsonError("Ya existe una caja abierta para esta jornada. Ciérrala antes de abrir otra.", 409);
   }
 
-  const result = await query(
-    `INSERT INTO caja (monto_inicial, id_usuario_apertura, estado)
-     VALUES ($1, $2, 'abierta') RETURNING id_caja`,
-    [montoInicial, session.idUsuario]
-  );
+  try {
+    const result = await query(
+      `INSERT INTO caja (monto_inicial, id_usuario_apertura, estado)
+       VALUES ($1, $2, 'abierta') RETURNING id_caja`,
+      [montoInicial, session.idUsuario]
+    );
 
-  await registrarAuditoria({
-    idUsuario: session.idUsuario,
-    idSesion: session.idSesion,
-    tabla: "caja",
-    operacion: "INSERT",
-    idRegistro: result.rows[0].id_caja,
-    valorNuevo: { id_caja: result.rows[0].id_caja, monto_inicial: montoInicial, estado: "abierta" },
-    ip: obtenerIP(request),
-  });
+    await registrarAuditoria({
+      idUsuario: session.idUsuario,
+      idSesion: session.idSesion,
+      tabla: "caja",
+      operacion: "INSERT",
+      idRegistro: result.rows[0].id_caja,
+      valorNuevo: { id_caja: result.rows[0].id_caja, monto_inicial: montoInicial, estado: "abierta" },
+      ip: obtenerIP(request),
+    });
 
-  return jsonOk({ id_caja: result.rows[0].id_caja, mensaje: "Caja abierta" }, 201);
+    return jsonOk({ id_caja: result.rows[0].id_caja, mensaje: "Caja abierta" }, 201);
+  } catch (err) {
+    // 23505 = violación del índice único de una sola caja abierta (carrera).
+    // La base de datos garantiza la unicidad; aquí solo se devuelve 409.
+    if (err.code === "23505") {
+      return jsonError("Ya existe una caja abierta para esta jornada. Ciérrala antes de abrir otra.", 409);
+    }
+    console.error("Error abriendo caja:", err);
+    return jsonError("Error interno del servidor.", 500);
+  }
 }

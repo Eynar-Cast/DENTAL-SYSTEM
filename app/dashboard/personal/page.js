@@ -143,7 +143,7 @@ export default function PersonalPage({ user }) {
         </div>
       )}
 
-      {showForm && <PersonalForm open onClose={() => setShowForm(false)} onSaved={() => toast.push("success", "Personal registrado")} />}
+      {showForm && <PersonalForm open onClose={() => setShowForm(false)} onSaved={() => { toast.push("success", "Personal registrado"); cargar(); }} />}
 
       <ConfirmDialog
         open={!!confirm}

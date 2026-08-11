@@ -42,9 +42,12 @@ export async function POST(request) {
     const user = userResult.rows[0];
 
     if (!user.activo) {
+      // También cuenta como intento fallido: evita que se use este camino
+      // para golpear cuentas sin activar el rate-limit.
+      registroIntentoFallido(ip, email);
       return NextResponse.json(
-        { error: "Este usuario está desactivado. Contacta al administrador." },
-        { status: 403 }
+        { error: "Credenciales inválidas." },
+        { status: 401 }
       );
     }
 

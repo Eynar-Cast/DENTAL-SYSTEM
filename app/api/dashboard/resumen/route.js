@@ -1,10 +1,13 @@
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireRoles } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
 
 export async function GET() {
   const session = await requireAuth();
   if (!session) return jsonError("No autenticado", 401);
+
+  // Solo admin y recepción ven las cifras financieras
+  const finanzas = requireRoles(session, ["admin", "recepcionista"]);
 
   // Citas del día
   const citasDia = await query(
@@ -33,15 +36,29 @@ export async function GET() {
   );
 
   const r = resumenResult.rows[0];
-  const ingresosDia = Number(r.ingresos_dia);
-  const egresosDia = Number(r.egresos_dia);
 
-  const caja = await query(
-    `SELECT c.*, per.nombres AS usuario_nombres
-     FROM caja c JOIN usuario u ON u.id_usuario = c.id_usuario_apertura
-     JOIN persona per ON per.id_persona = u.id_persona
-     WHERE c.estado = 'abierta' ORDER BY c.id_caja DESC LIMIT 1`
-  );
+  let ingresosDia = null;
+  let egresosDia = null;
+  let cajaInfo = null;
+  if (finanzas) {
+    ingresosDia = Number(r.ingresos_dia);
+    egresosDia = Number(r.egresos_dia);
+
+    const caja = await query(
+      `SELECT c.*, per.nombres AS usuario_nombres, per.apellidos AS usuario_apellidos
+       FROM caja c JOIN usuario u ON u.id_usuario = c.id_usuario_apertura
+       JOIN persona per ON per.id_persona = u.id_persona
+       WHERE c.estado = 'abierta' ORDER BY c.id_caja DESC LIMIT 1`
+    );
+    cajaInfo = caja.rows[0]
+      ? {
+          id_caja: caja.rows[0].id_caja,
+          estado: "abierta",
+          monto_inicial: Number(caja.rows[0].monto_inicial),
+          usuario: `${caja.rows[0].usuario_nombres} ${caja.rows[0].usuario_apellidos || ""}`,
+        }
+      : null;
+  }
 
   const tratamientos = await query(
     `SELECT pr.nombre AS tratamiento, SUM(ap.cantidad) AS total
@@ -65,22 +82,16 @@ export async function GET() {
   );
 
   return jsonOk({
+    finanzas,
     citas_hoy: citasHoy,
     total_citas_hoy: citasHoy.length,
     pacientes_atendidos_hoy: atendidosHoy,
     citas_agendadas_hoy: Number(r.citas_agendadas_hoy),
     ingresos_dia: ingresosDia,
     egresos_dia: egresosDia,
-    utilidad_dia: ingresosDia - egresosDia,
+    utilidad_dia: ingresosDia !== null && egresosDia !== null ? ingresosDia - egresosDia : null,
     pacientes_activos: Number(r.pacientes_activos),
-    caja: caja.rows[0]
-      ? {
-          id_caja: caja.rows[0].id_caja,
-          estado: "abierta",
-          monto_inicial: Number(caja.rows[0].monto_inicial),
-          usuario: `${caja.rows[0].usuario_nombres} ${caja.rows[0].usuario_apellidos || ""}`,
-        }
-      : null,
+    caja: cajaInfo,
     tratamientos_mas_realizados: tratamientos.rows,
     proximas_citas: proximasCitas.rows,
   });

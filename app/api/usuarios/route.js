@@ -4,6 +4,8 @@ import { jsonError, jsonOk } from "@/lib/http";
 import { registrarAuditoria } from "@/lib/audit";
 import { textoLimpio, esEmail } from "@/lib/validations";
 
+const ROLES_PERMITIDOS = ["admin", "recepcionista", "odontologo"];
+
 export async function GET() {
   const session = await requireAuth();
   if (!session) return jsonError("No autenticado", 401);
@@ -48,6 +50,9 @@ export async function POST(request) {
     return jsonError("La contraseña debe tener al menos 6 caracteres", 400);
   }
   if (roles.length === 0) return jsonError("Selecciona al menos un rol", 400);
+  if (roles.some((r) => !ROLES_PERMITIDOS.includes(r))) {
+    return jsonError("Uno de los roles seleccionados no es válido", 400);
+  }
 
   try {
     const result = await withTransaction(async (client) => {

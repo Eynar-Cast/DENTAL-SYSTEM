@@ -141,7 +141,7 @@ export default function PacientesPage({ user }) {
         </div>
       )}
 
-      {showForm && <PacienteForm open onClose={() => setShowForm(false)} onSaved={() => toast.push("success", "Paciente creado")} />}
+      {showForm && <PacienteForm open onClose={() => setShowForm(false)} onSaved={() => { toast.push("success", "Paciente creado"); cargar(); }} />}
 
       <ConfirmDialog
         open={!!confirm}

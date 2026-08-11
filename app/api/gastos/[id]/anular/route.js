@@ -19,9 +19,22 @@ export async function PATCH(request, context) {
   const motivo = textoLimpio(body.motivo);
   if (!motivo) return jsonError("El motivo de anulación es obligatorio", 400);
 
-  const gastoResult = await query(`SELECT id_gasto, anulado FROM gasto WHERE id_gasto = $1`, [idGasto]);
+  const gastoResult = await query(
+    `SELECT g.id_gasto, g.id_caja, g.anulado FROM gasto g WHERE g.id_gasto = $1`,
+    [idGasto]
+  );
   if (gastoResult.rows.length === 0) return jsonError("Gasto no encontrado", 404);
   if (gastoResult.rows[0].anulado) return jsonError("El gasto ya está anulado", 409);
+
+  // No anular movimientos de una jornada ya cerrada: invalidaría el arqueo
+  const cajaResult = await query(
+    `SELECT estado FROM caja WHERE id_caja = $1`,
+    [gastoResult.rows[0].id_caja]
+  );
+  if (cajaResult.rows.length === 0) return jsonError("La caja del gasto no existe", 409);
+  if (cajaResult.rows[0].estado === "cerrada") {
+    return jsonError("No puedes anular un gasto de una caja ya cerrada", 409);
+  }
 
   const anterior = gastoResult.rows[0];
 

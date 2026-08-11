@@ -1,6 +1,7 @@
 import { requireAuth, requireRoles } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
+import { validarRangoFechas } from "@/lib/validations";
 
 const ROLES = ["admin"];
 
@@ -18,6 +19,8 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
+  const errFechas = validarRangoFechas(desde, hasta);
+  if (errFechas) return jsonError(errFechas, 400);
 
   let sql = `SELECT c.fecha_hora::date AS fecha, COUNT(DISTINCT c.id_paciente) AS pacientes,
                     COUNT(*) AS citas_atendidas

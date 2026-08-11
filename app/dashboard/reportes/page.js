@@ -12,12 +12,12 @@ const TABS = [
   { key: "utilidad", label: "Resumen financiero", tipoExcel: "resumen-dia" },
   { key: "ingresos", label: "Ingresos", tipoExcel: "movimientos" },
   { key: "egresos", label: "Egresos", tipoExcel: null },
-  { key: "pacientes", label: "Pacientes atendidos", tipoExcel: "pacientes-atendidos" },
-  { key: "tratamientos", label: "Tratamientos realizados", tipoExcel: "tratamientos" },
-  { key: "ranking", label: "Ranking de tratamientos", tipoExcel: "ranking-tratamientos" },
-  { key: "metodos", label: "Métodos de pago", tipoExcel: "metodos-pago" },
-  { key: "comparacion", label: "Ingresos mensuales", tipoExcel: null },
-  { key: "cierres", label: "Cierres de caja", tipoExcel: "cierres-caja" },
+  { key: "pacientes-atendidos", label: "Pacientes atendidos", tipoExcel: "pacientes-atendidos" },
+  { key: "tratamientos-realizados", label: "Tratamientos realizados", tipoExcel: "tratamientos" },
+  { key: "ranking-tratamientos", label: "Ranking de tratamientos", tipoExcel: "ranking-tratamientos" },
+  { key: "metodos-pago", label: "Métodos de pago", tipoExcel: "metodos-pago" },
+  { key: "comparacion-ingresos", label: "Ingresos mensuales", tipoExcel: null },
+  { key: "cierres-caja", label: "Cierres de caja", tipoExcel: "cierres-caja" },
 ];
 
 export default function ReportesPage({ user }) {
@@ -29,6 +29,7 @@ export default function ReportesPage({ user }) {
   const toast = useToast();
 
   useEffect(() => {
+    if (!esAdmin) return;
     let activo = true;
     const params = new URLSearchParams();
     if (desde) params.set("desde", desde);
@@ -39,7 +40,7 @@ export default function ReportesPage({ user }) {
       .catch((e) => { if (activo) toast.push("error", e.message); });
     return () => { activo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, desde, hasta]);
+  }, [tab, desde, hasta, esAdmin]);
 
   const data = resultado && resultado.tab === tab ? resultado.data : null;
 
@@ -120,8 +121,8 @@ function TablaReporte({ tab, data }) {
                   {data.mensual.map((r, i) => (
                     <tr key={i}>
                       <td>{r.mes}</td>
-                      <td className="mono">{formatMoneda(r.ingresos)}</td>
-                      <td className="mono">{formatMoneda(r.egresos)}</td>
+                      <td className="mono">{tab === "ingresos" || tab === "utilidad" ? formatMoneda(r.ingresos) : "—"}</td>
+                      <td className="mono">{tab === "egresos" || tab === "utilidad" ? formatMoneda(r.egresos) : "—"}</td>
                       {tab === "utilidad" && <td className="mono">{formatMoneda(r.utilidad)}</td>}
                     </tr>
                   ))}
@@ -134,12 +135,12 @@ function TablaReporte({ tab, data }) {
     );
   }
 
-  if (tab === "pacientes") return <Tabla columnas={["Fecha", "Pacientes", "Citas atendidas"]} filas={data.map((r) => [formatFechaHora(r.fecha), r.pacientes, r.citas_atendidas])} />;
-  if (tab === "tratamientos") return <Tabla columnas={["Fecha", "Tratamiento", "Odontólogo", "Cantidad"]} filas={data.map((r) => [formatFechaHora(r.fecha), r.tratamiento, `${r.odontologo_nombres} ${r.odontologo_apellidos}`, r.cantidad])} />;
-  if (tab === "ranking") return <Tabla columnas={["Tratamiento", "Total realizados"]} filas={data.map((r) => [r.tratamiento, r.total])} />;
-  if (tab === "metodos") return <Tabla columnas={["Método de pago", "Cantidad", "Total"]} filas={data.map((r) => [r.metodo_pago, r.cantidad, formatMoneda(r.total)])} />;
-  if (tab === "comparacion") return <Tabla columnas={["Mes", "Ingresos"]} filas={data.map((r) => [r.mes, formatMoneda(r.ingresos)])} />;
-  if (tab === "cierres") {
+  if (tab === "pacientes-atendidos") return <Tabla columnas={["Fecha", "Pacientes", "Citas atendidas"]} filas={data.map((r) => [formatFechaHora(r.fecha), r.pacientes, r.citas_atendidas])} />;
+  if (tab === "tratamientos-realizados") return <Tabla columnas={["Fecha", "Tratamiento", "Odontólogo", "Cantidad"]} filas={data.map((r) => [formatFechaHora(r.fecha), r.tratamiento, `${r.odontologo_nombres} ${r.odontologo_apellidos}`, r.cantidad])} />;
+  if (tab === "ranking-tratamientos") return <Tabla columnas={["Tratamiento", "Total realizados"]} filas={data.map((r) => [r.tratamiento, r.total])} />;
+  if (tab === "metodos-pago") return <Tabla columnas={["Método de pago", "Cantidad", "Total"]} filas={data.map((r) => [r.metodo_pago, r.cantidad, formatMoneda(r.total)])} />;
+  if (tab === "comparacion-ingresos") return <Tabla columnas={["Mes", "Ingresos"]} filas={data.map((r) => [r.mes, formatMoneda(r.ingresos)])} />;
+  if (tab === "cierres-caja") {
     return <Tabla columnas={["#", "Apertura", "Cierre", "Inicial", "Ingresos", "Egresos", "Declarado", "Diferencia"]}
       filas={data.map((r) => [
         `#${r.id_caja}`, formatFechaHora(r.fecha_apertura), formatFechaHora(r.fecha_cierre),

@@ -12,7 +12,8 @@ import { usePermisos } from "@/components/ui/DashboardShell";
 import { formatFechaHora, formatMoneda, fechaHoyISO } from "@/lib/utils";
 
 export default function GastosPage({ user }) {
-  const { esAdmin } = usePermisos(user);
+  const { esAdmin, esRecepcion } = usePermisos(user);
+  const puedeVer = esAdmin || esRecepcion;
 
   const [gastos, setGastos] = useState(null);
   const [categorias, setCategorias] = useState([]);
@@ -33,6 +34,7 @@ export default function GastosPage({ user }) {
   }
 
   useEffect(() => {
+    if (!puedeVer) return;
     let activo = true;
     const params = new URLSearchParams();
     if (fecha) params.set("fecha", fecha);
@@ -41,11 +43,15 @@ export default function GastosPage({ user }) {
       .catch((e) => { if (activo) toast.push("error", e.message); });
     return () => { activo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fecha]);
+  }, [fecha, puedeVer]);
 
   useEffect(() => {
-    apiGet("/api/categorias-gasto").then(setCategorias).catch(() => {});
-  }, []);
+    if (puedeVer) apiGet("/api/categorias-gasto").then(setCategorias).catch(() => {});
+  }, [puedeVer]);
+
+  if (!puedeVer) {
+    return <div className="card"><EmptyState icon="◎" message="Solo administradores y recepción pueden ver gastos" /></div>;
+  }
 
   async function registrar(form) {
     try {
@@ -59,6 +65,7 @@ export default function GastosPage({ user }) {
       cargar();
     } catch (e) {
       toast.push("error", e.message);
+      throw e;
     }
   }
 
@@ -168,6 +175,7 @@ function GastoForm({ categorias, onClose, onSave }) {
       await onSave(form);
     } catch (err) {
       setError(err.message);
+    } finally {
       setLoading(false);
     }
   }

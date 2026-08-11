@@ -11,11 +11,9 @@ const ETIQUETA_ROL = {
   odontologo: "Odontólogo",
 };
 
-export default function Sidebar({ user }) {
+export default function Sidebar({ user, collapsed, onToggleCollapsed, mobileOpen, onCloseMobile }) {
   const pathname = usePathname();
   const roles = user?.roles || [];
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const items = NAV_ITEMS.filter((item) => item.roles.some((r) => roles.includes(r)));
 
@@ -27,8 +25,8 @@ export default function Sidebar({ user }) {
     <>
       {mobileOpen && (
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 35, background: "rgba(3,9,15,0.6)" }}
-          onClick={() => setMobileOpen(false)}
+          className="sidebar-backdrop"
+          onClick={onCloseMobile}
         />
       )}
       <aside className={`sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
@@ -65,7 +63,7 @@ export default function Sidebar({ user }) {
               key={item.href}
               href={item.href}
               className={`nav-link ${esActivo(item.href) ? "active" : ""}`}
-              onClick={() => setMobileOpen(false)}
+              onClick={onCloseMobile}
             >
               <span className="nav-icon">{item.icon}</span>
               {!collapsed && <span>{item.label}</span>}
@@ -74,10 +72,6 @@ export default function Sidebar({ user }) {
         </nav>
 
         <div className="sidebar-footer">
-          <a href="/docs" className="nav-link" onClick={() => setMobileOpen(false)}>
-            <span className="nav-icon">⎙</span>
-            {!collapsed && <span>Documentación API</span>}
-          </a>
           <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 10 }}>
             <span className="status-dot" />
             {!collapsed && (
@@ -89,9 +83,9 @@ export default function Sidebar({ user }) {
         </div>
 
         <button
-          className="icon-btn"
+          className="icon-btn sidebar-collapse-btn"
           style={{ position: "absolute", top: 18, right: 12, width: 30, height: 30 }}
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={onToggleCollapsed}
           aria-label="Colapsar menú"
           title={collapsed ? "Expandir" : "Colapsar"}
         >
@@ -99,9 +93,9 @@ export default function Sidebar({ user }) {
         </button>
 
         <button
-          className="icon-btn"
-          style={{ position: "absolute", top: 18, left: 12, width: 30, height: 30, display: "none" }}
-          onClick={() => setMobileOpen(false)}
+          className="icon-btn sidebar-close-mobile"
+          style={{ position: "absolute", top: 18, right: 12, width: 30, height: 30 }}
+          onClick={onCloseMobile}
           aria-label="Cerrar"
         >
           ✕
