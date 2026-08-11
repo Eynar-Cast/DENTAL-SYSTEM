@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { verifyPassword, createSessionToken, setSessionCookie } from "@/lib/auth";
+import { verifyPassword, createSessionToken, setSessionCookie, obtenerRolesUsuario, obtenerIP } from "@/lib/auth";
 
 export async function POST(request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request) {
     }
 
     const userResult = await query(
-      `SELECT u.id_usuario, u.email, u.password_hash, u.activo,
+      `SELECT u.id_usuario, u.id_persona, u.email, u.password_hash, u.activo,
               p.nombres, p.apellidos
        FROM usuario u
        JOIN persona p ON p.id_persona = u.id_persona
@@ -46,8 +46,16 @@ export async function POST(request) {
       );
     }
 
-    // Crear registro de sesión en la base de datos
-    const ip = request.headers.get("x-forwarded-for") || null;
+    // Limpiar sesiones expiradas (inactividad > 8 horas)
+    await query(
+      `UPDATE sesion_usuario
+       SET estado = 'expirada', fecha_fin = NOW()
+       WHERE estado = 'activa' AND fecha_inicio < NOW() - INTERVAL '8 hours'`
+    );
+
+    const roles = await obtenerRolesUsuario(user.id_usuario);
+
+    const ip = obtenerIP(request);
     const userAgent = request.headers.get("user-agent") || null;
 
     const sessionResult = await query(
@@ -61,9 +69,11 @@ export async function POST(request) {
 
     const token = await createSessionToken({
       idUsuario: user.id_usuario,
+      idPersona: user.id_persona,
       idSesion,
       email: user.email,
       nombres: `${user.nombres} ${user.apellidos}`,
+      roles,
     });
 
     await setSessionCookie(token);
@@ -74,6 +84,7 @@ export async function POST(request) {
         idUsuario: user.id_usuario,
         email: user.email,
         nombres: `${user.nombres} ${user.apellidos}`,
+        roles,
       },
     });
   } catch (err) {

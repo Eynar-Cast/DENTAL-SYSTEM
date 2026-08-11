@@ -59,7 +59,11 @@ async function main() {
     }
 
     console.log("\n--- Verificando datos semilla ---");
-    const seedTables = ["estado_cita", "grupo_sanguineo", "rol", "tipo_signo_vital", "pais"];
+    const seedTables = [
+      "estado_cita", "grupo_sanguineo", "rol", "tipo_signo_vital", "pais",
+      "especialidad", "metodo_pago", "categoria_gasto", "procedimiento",
+      "catalogo_diagnostico", "permiso", "rol_permiso"
+    ];
     for (const table of seedTables) {
       try {
         const r = await pool.query(`SELECT COUNT(*) FROM ${table};`);

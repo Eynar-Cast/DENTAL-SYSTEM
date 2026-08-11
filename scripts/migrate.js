@@ -1,6 +1,8 @@
 // scripts/migrate.js
 // Ejecuta scripts/schema.sql contra la base de datos apuntada por DATABASE_URL.
-// Uso: node scripts/migrate.js
+// Uso: node scripts/migrate.js [--reset]
+//   --reset  Elimina TODO el contenido del esquema public (datos y tablas)
+//            y lo vuelve a crear desde cero. Usar con cuidado.
 //
 // Requiere que exista .env.local con DATABASE_URL, o que la variable
 // esté seteada en el entorno donde corres el comando.
@@ -52,6 +54,7 @@ async function main() {
   }
 
   const sql = fs.readFileSync(schemaPath, "utf8");
+  const reset = process.argv.includes("--reset");
 
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -61,6 +64,14 @@ async function main() {
   const client = await pool.connect();
   try {
     console.log("Conectado a la base de datos. Ejecutando schema.sql...\n");
+
+    if (reset) {
+      console.log("⚠ Modo --reset: eliminando esquema public y todos los datos...");
+      await client.query("DROP SCHEMA public CASCADE");
+      await client.query("CREATE SCHEMA public");
+      await client.query("GRANT ALL ON SCHEMA public TO public");
+    }
+
     await client.query(sql);
     console.log("✓ Migración completada exitosamente. Todas las tablas fueron creadas.");
   } catch (err) {

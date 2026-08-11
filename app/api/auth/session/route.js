@@ -13,6 +13,7 @@ export async function GET() {
       idUsuario: session.idUsuario,
       email: session.email,
       nombres: session.nombres,
+      roles: session.roles || [],
     },
   });
 }
