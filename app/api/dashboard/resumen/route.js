@@ -11,8 +11,9 @@ export async function GET() {
 
   // Citas del día
   const citasDia = await query(
-    `SELECT c.id_cita, c.motivo, c.fecha_hora, e.descripcion AS estado,
+    `SELECT c.id_cita, c.id_paciente, c.motivo, c.fecha_hora, e.descripcion AS estado,
             per_pac.nombres AS paciente_nombres, per_pac.apellidos AS paciente_apellidos,
+            per_pac.documento_identidad AS paciente_ci,
             per_odo.nombres AS odontologo_nombres, per_odo.apellidos AS odontologo_apellidos
      FROM cita c
      JOIN estado_cita e ON e.id_estado = c.id_estado
