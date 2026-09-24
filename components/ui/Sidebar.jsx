@@ -18,6 +18,7 @@ export default function Sidebar({ user, collapsed, onToggleCollapsed, mobileOpen
   const items = NAV_ITEMS.filter((item) => item.roles.some((r) => roles.includes(r)));
 
   function esActivo(href) {
+    if (href === "/dashboard") return pathname === "/dashboard";
     return pathname === href || pathname.startsWith(href + "/");
   }
 

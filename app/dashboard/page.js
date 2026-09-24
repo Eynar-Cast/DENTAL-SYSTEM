@@ -52,11 +52,11 @@ export default function DashboardPage({ user }) {
     const maxEstado = Math.max(...porEstado.map((p) => p.count), 1);
 
     return (
-      <div>
-        <div className="welcome-banner" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div style={{ minWidth: 0 }}>
-            <h2>{ahora ? saludoSegunHora(ahora) : "Bienvenido"}, Dr. {user?.nombres?.split(" ")[0] || ""}</h2>
-            <p>Su agenda de hoy, {ahora ? formatFechaHora(ahora.toISOString()) : ""}.</p>
+      <div style={{ minWidth: 0, overflowX: "hidden" }}>
+        <div className="welcome-banner" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+            <h2 style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{ahora ? saludoSegunHora(ahora) : "Bienvenido"}, Dr. {user?.nombres?.split(" ")[0] || ""}</h2>
+            <p style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" }}>Su agenda de hoy, {ahora ? formatFechaHora(ahora.toISOString()) : ""}.</p>
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Citas programadas</div>
@@ -297,11 +297,11 @@ export default function DashboardPage({ user }) {
   const maxEstado = Math.max(...porEstado.map((p) => p.count), 1);
 
   return (
-    <div>
-      <div className="welcome-banner" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-        <div style={{ minWidth: 0 }}>
-          <h2>{ahora ? saludoSegunHora(ahora) : "Bienvenido"}, al panel</h2>
-          <p>
+    <div style={{ minWidth: 0, overflowX: "hidden" }}>
+      <div className="welcome-banner" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+          <h2 style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{ahora ? saludoSegunHora(ahora) : "Bienvenido"}, al panel</h2>
+          <p style={{ wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" }}>
             Resumen de operaciones del consultorio para hoy, {ahora ? formatFechaHora(ahora.toISOString()) : ""}.
           </p>
         </div>
