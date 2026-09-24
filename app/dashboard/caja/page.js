@@ -147,7 +147,7 @@ export default function CajaPage({ user }) {
           <div className="card" style={{ padding: 20, marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
               <h3 style={{ margin: 0, fontSize: 16 }}>Presupuestos pendientes de cobro</h3>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowPresupuesto(true)}>+ Generar presupuesto</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowPresupuesto(true)}>+ Registrar cobro</button>
             </div>
             {pendientes.length === 0 ? (
               <EmptyState icon="₿" message="No hay presupuestos pendientes" />
@@ -163,7 +163,7 @@ export default function CajaPage({ user }) {
                       <th>Pagado</th>
                       <th>Saldo</th>
                       <th>Estado</th>
-                      <th style={{ textAlign: "right" }}>Cobrar</th>
+                      <th style={{ textAlign: "right" }}>Registrar cobro</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -180,7 +180,7 @@ export default function CajaPage({ user }) {
                         <td className="mono" style={{ fontWeight: 700, color: p.estado === 'parcial' ? "var(--warning, #d97706)" : "var(--text)" }}>{formatMoneda(saldo)}</td>
                         <td><Badge>{p.estado === 'parcial' ? 'parcial' : 'pendiente'}</Badge></td>
                         <td style={{ textAlign: "right" }}>
-                          <button className="btn btn-primary btn-sm" onClick={() => setShowCobro(p)}>Cobrar</button>
+                          <button className="btn btn-primary btn-sm" onClick={() => setShowCobro(p)}>Registrar cobro</button>
                         </td>
                       </tr>
                     );})}
@@ -249,7 +249,7 @@ export default function CajaPage({ user }) {
       </Modal>
 
       {showPresupuesto && (
-        <PresupuestoForm onClose={() => setShowPresupuesto(false)} onSaved={() => { cargarTodo(); toast.push("success", "Presupuesto generado"); }} />
+        <PresupuestoForm onClose={() => setShowPresupuesto(false)} onSaved={() => { cargarTodo(); toast.push("success", "Cobro registrado y guardado"); }} />
       )}
 
       {showCobro && (
@@ -330,8 +330,8 @@ function CobroModal({ presupuesto, metodos, onClose, onConfirm }) {
   }
 
   return (
-    <Modal open={true} title={`Cobrar presupuesto #${presupuesto.id_presupuesto}`} onClose={onClose}
-      footer={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={handleConfirm}>{tipoPago === "contado" ? `Cobrar ${formatMoneda(saldoExacto)}` : `Cobrar ${formatMoneda(montoEfectivo || 0)}`}</button></>}>
+    <Modal open={true} title={`Registrar cobro — presupuesto #${presupuesto.id_presupuesto}`} onClose={onClose}
+      footer={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={handleConfirm}>{tipoPago === "contado" ? `Registrar cobro ${formatMoneda(saldoExacto)}` : `Registrar cobro ${formatMoneda(montoEfectivo || 0)}`}</button></>}>
       <div style={{ marginBottom: 14, padding: 12, background: "var(--surface-2)", borderRadius: 10 }}>
         <div style={{ fontWeight: 600 }}>{presupuesto.paciente_nombres} {presupuesto.paciente_apellidos} <span className="mono" style={{ color: "var(--text-faint)", fontWeight: 400 }}>({presupuesto.paciente_ci})</span></div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 10, fontSize: 13 }}>
@@ -440,12 +440,12 @@ function PresupuestoForm({ onClose, onSaved }) {
   }
 
   return (
-    <Modal open={true} title="Generar presupuesto" onClose={onClose} wide
+    <Modal open={true} title="Registrar cobro" onClose={onClose} wide
       footer={
         <>
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
           <button className="btn btn-primary" form="presupuesto-form" type="submit" disabled={loading}>
-            {loading ? "Generando..." : `Generar (${formatMoneda(total)})`}
+            {loading ? "Guardando..." : `Registrar y guardar (${formatMoneda(total)})`}
           </button>
         </>
       }>
