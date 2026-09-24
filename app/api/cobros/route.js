@@ -54,11 +54,30 @@ export async function POST(request) {
         throw e;
       }
 
-      if (Math.abs(monto - Number(presupuesto.total)) > 0.001) {
-        const e = new Error("MONTO_INCORRECTO");
-        e.code = "MONTO_INCORRECTO";
+      // Calcular monto ya pagado y saldo restante (excluye anulados)
+      const pagosResult = await client.query(
+        `SELECT COALESCE(SUM(monto),0) AS pagado FROM cobro WHERE id_presupuesto = $1 AND anulado = FALSE`,
+        [idPresupuesto]
+      );
+      const montoPagadoPrevio = Number(pagosResult.rows[0].pagado);
+      const total = Number(presupuesto.total);
+      const saldo = Number((total - montoPagadoPrevio).toFixed(2));
+
+      if (saldo <= 0.001) {
+        const e = new Error("YA_PAGADO");
+        e.code = "YA_PAGADO";
         throw e;
       }
+
+      if (monto > saldo + 0.001) {
+        const e = new Error("MONTO_EXCEDE_SALDO");
+        e.code = "MONTO_EXCEDE_SALDO";
+        e.saldo = saldo;
+        throw e;
+      }
+
+      const esPagoTotal = Math.abs(monto - saldo) <= 0.001;
+      const nuevoEstado = esPagoTotal ? "pagado" : "parcial";
 
       const cobroResult = await client.query(
         `INSERT INTO cobro (id_presupuesto, id_caja, id_metodo_pago, monto, id_usuario)
@@ -67,10 +86,10 @@ export async function POST(request) {
       );
       const idCobro = cobroResult.rows[0].id_cobro;
 
-      // Barrera final: solo marca pagado si seguía en 'pendiente'.
+      // Actualizar estado según si se completó el saldo o queda pendiente
       const updateResult = await client.query(
-        `UPDATE presupuesto SET estado = 'pagado' WHERE id_presupuesto = $1 AND estado = 'pendiente'`,
-        [idPresupuesto]
+        `UPDATE presupuesto SET estado = $1 WHERE id_presupuesto = $2 AND estado IN ('pendiente','parcial')`,
+        [nuevoEstado, idPresupuesto]
       );
       if (updateResult.rowCount === 0) {
         const e = new Error("YA_PAGADO");
@@ -78,21 +97,25 @@ export async function POST(request) {
         throw e;
       }
 
+      const montoPagadoNuevo = Number((montoPagadoPrevio + monto).toFixed(2));
+      const saldoRestante = Number((total - montoPagadoNuevo).toFixed(2));
+
       await registrarAuditoria({
         idUsuario: session.idUsuario,
         idSesion: session.idSesion,
         tabla: "cobro",
         operacion: "INSERT",
         idRegistro: idCobro,
-        valorNuevo: { id_cobro: idCobro, id_presupuesto: idPresupuesto, monto },
+        valorNuevo: { id_cobro: idCobro, id_presupuesto: idPresupuesto, monto, monto_pagado: montoPagadoNuevo, saldo_restante: saldoRestante < 0.005 ? 0 : saldoRestante, estado_presupuesto: nuevoEstado },
         ip,
         client,
       });
 
-      return idCobro;
+      return { idCobro, montoPagado: montoPagadoNuevo, saldoRestante: saldoRestante < 0.005 ? 0 : saldoRestante, estado: nuevoEstado, esPagoTotal };
     });
 
-    return jsonOk({ id_cobro: result, mensaje: "Pago registrado" }, 201);
+    const mensaje = result.esPagoTotal ? "Pago total registrado" : `Pago parcial registrado. Saldo restante: Bs ${result.saldoRestante.toFixed(2)}`;
+    return jsonOk({ id_cobro: result.idCobro, monto_pagado: result.montoPagado, saldo_restante: result.saldoRestante, estado: result.estado, mensaje }, 201);
   } catch (err) {
     switch (err.code) {
       case "NO_CAJA":
@@ -101,8 +124,8 @@ export async function POST(request) {
         return jsonError("Presupuesto no encontrado", 404);
       case "YA_PAGADO":
         return jsonError("Este presupuesto ya está pagado.", 409);
-      case "MONTO_INCORRECTO":
-        return jsonError("El monto debe ser igual al total del presupuesto.", 400);
+      case "MONTO_EXCEDE_SALDO":
+        return jsonError(`El monto excede el saldo pendiente (Bs ${Number(err.saldo).toFixed(2)}).`, 400);
       case "23503":
         return jsonError("El presupuesto o método de pago no existe.", 400);
       default:

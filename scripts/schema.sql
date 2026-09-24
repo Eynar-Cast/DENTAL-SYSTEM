@@ -253,7 +253,7 @@ CREATE TABLE presupuesto (
     fecha_emision  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     total          NUMERIC(12,2) NOT NULL DEFAULT 0,
     estado         VARCHAR(20) NOT NULL DEFAULT 'pendiente'
-        CHECK (estado IN ('pendiente', 'pagado'))
+        CHECK (estado IN ('pendiente', 'parcial', 'pagado'))
 );
 
 CREATE TABLE detalle_presupuesto (

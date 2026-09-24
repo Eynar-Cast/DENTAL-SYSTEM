@@ -44,14 +44,18 @@ export async function PATCH(request, context) {
       [motivo, idCobro]
     );
 
-    // Si no queda ningún cobro activo, el presupuesto vuelve a 'pendiente'
-    await client.query(
-      `UPDATE presupuesto SET estado = 'pendiente'
-       WHERE id_presupuesto = $1 AND NOT EXISTS (
-         SELECT 1 FROM cobro WHERE id_presupuesto = $1 AND anulado = FALSE
-       )`,
-      [anterior.id_presupuesto]
-    );
+    // Recalcular estado del presupuesto según saldo restante (pagos parciales)
+    const totalResult = await client.query(`SELECT total FROM presupuesto WHERE id_presupuesto = $1`, [anterior.id_presupuesto]);
+    const total = Number(totalResult.rows[0].total);
+    const pagadoResult = await client.query(`SELECT COALESCE(SUM(monto),0) AS pagado FROM cobro WHERE id_presupuesto = $1 AND anulado = FALSE`, [anterior.id_presupuesto]);
+    const pagado = Number(pagadoResult.rows[0].pagado);
+    const saldo = Number((total - pagado).toFixed(2));
+    let nuevoEstado;
+    if (pagado <= 0.001) nuevoEstado = 'pendiente';
+    else if (saldo <= 0.001) nuevoEstado = 'pagado';
+    else nuevoEstado = 'parcial';
+
+    await client.query(`UPDATE presupuesto SET estado = $1 WHERE id_presupuesto = $2`, [nuevoEstado, anterior.id_presupuesto]);
 
     await registrarAuditoria({
       idUsuario: session.idUsuario,

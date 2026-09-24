@@ -74,8 +74,8 @@ export default function CajaPage({ user }) {
     if (operando) return;
     setOperando(true);
     try {
-      await apiPost("/api/cobros", { id_presupuesto: Number(idPresupuesto), id_metodo_pago: Number(idMetodo), monto: Number(monto) });
-      toast.push("success", "Pago registrado");
+      const res = await apiPost("/api/cobros", { id_presupuesto: Number(idPresupuesto), id_metodo_pago: Number(idMetodo), monto: Number(monto) });
+      toast.push("success", res.mensaje || "Pago registrado");
       setShowCobro(null);
       cargarTodo();
     } catch (e) {
@@ -117,8 +117,9 @@ export default function CajaPage({ user }) {
 
   if (!caja || !movimientos || !presupuestos) return <LoadingSpinner />;
 
-  const pendientes = presupuestos.filter((p) => p.estado === "pendiente");
-  const totalPendiente = pendientes.reduce((a, p) => a + Number(p.total), 0);
+  const pendientes = presupuestos.filter((p) => p.estado === "pendiente" || p.estado === "parcial");
+  const totalPendiente = pendientes.reduce((a, p) => a + Number(p.saldo_restante ?? p.total), 0);
+  const totalPagadoPendientes = pendientes.reduce((a, p) => a + Number(p.monto_pagado ?? 0), 0);
 
   return (
     <div>
@@ -157,23 +158,32 @@ export default function CajaPage({ user }) {
                     <tr>
                       <th>#</th>
                       <th>Paciente</th>
-                      <th>Fecha de emisión</th>
+                      <th>Fecha</th>
                       <th>Total</th>
+                      <th>Pagado</th>
+                      <th>Saldo</th>
+                      <th>Estado</th>
                       <th style={{ textAlign: "right" }}>Cobrar</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {pendientes.map((p) => (
+                    {pendientes.map((p) => {
+                      const pagado = Number(p.monto_pagado ?? 0);
+                      const saldo = Number(p.saldo_restante ?? p.total);
+                      return (
                       <tr key={p.id_presupuesto}>
                         <td className="mono">#{p.id_presupuesto}</td>
                         <td>{p.paciente_nombres} {p.paciente_apellidos} <span className="mono" style={{ color: "var(--text-faint)" }}>({p.paciente_ci})</span></td>
                         <td>{formatFechaHora(p.fecha_emision)}</td>
-                        <td className="mono" style={{ fontWeight: 600 }}>{formatMoneda(p.total)}</td>
+                        <td className="mono">{formatMoneda(p.total)}</td>
+                        <td className="mono" style={{ color: pagado > 0 ? "var(--success)" : undefined, fontWeight: pagado > 0 ? 600 : 400 }}>{formatMoneda(pagado)}</td>
+                        <td className="mono" style={{ fontWeight: 700, color: p.estado === 'parcial' ? "var(--warning, #d97706)" : "var(--text)" }}>{formatMoneda(saldo)}</td>
+                        <td><Badge>{p.estado === 'parcial' ? 'parcial' : 'pendiente'}</Badge></td>
                         <td style={{ textAlign: "right" }}>
                           <button className="btn btn-primary btn-sm" onClick={() => setShowCobro(p)}>Cobrar</button>
                         </td>
                       </tr>
-                    ))}
+                    );})}
                   </tbody>
                 </table>
               </div>
@@ -183,7 +193,7 @@ export default function CajaPage({ user }) {
           <div className="card" style={{ padding: 20 }}>
             <h3 style={{ margin: "0 0 4px", fontSize: 16 }}>Movimientos del día</h3>
             <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-muted)" }}>
-              Pendiente de cobro: {formatMoneda(totalPendiente)} en {pendientes.length} presupuesto(s)
+              Saldo pendiente: {formatMoneda(totalPendiente)} en {pendientes.length} presupuesto(s) · Pagado parcial acumulado: {formatMoneda(totalPagadoPendientes)}
             </p>
             {movimientos.movimientos.length === 0 ? (
               <EmptyState icon="⇄" message="Sin movimientos en la jornada" />
@@ -243,19 +253,7 @@ export default function CajaPage({ user }) {
       )}
 
       {showCobro && (
-        <Modal open={true} title={`Cobrar presupuesto #${showCobro.id_presupuesto}`} onClose={() => setShowCobro(null)}
-          footer={<CobroFooter presupuesto={showCobro} onCancel={() => setShowCobro(null)} onConfirm={cobrar} />}>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontWeight: 600 }}>{showCobro.paciente_nombres} {showCobro.paciente_apellidos}</div>
-            <div style={{ fontSize: 14, color: "var(--text-muted)" }}>Total: <b style={{ color: "var(--text)" }}>{formatMoneda(showCobro.total)}</b></div>
-          </div>
-          <label className="label">Método de pago</label>
-          <select className="select" id="cobro-metodo">
-            {metodos.map((m) => (
-              <option key={m.id_metodo_pago} value={m.id_metodo_pago}>{m.descripcion}</option>
-            ))}
-          </select>
-        </Modal>
+        <CobroModal presupuesto={showCobro} metodos={metodos} onClose={() => setShowCobro(null)} onConfirm={cobrar} />
       )}
 
       <Modal open={showCierre} title="Cerrar caja" onClose={() => setShowCierre(false)}
@@ -301,14 +299,83 @@ function AperturaFooter({ onCancel, onConfirm }) {
   );
 }
 
-function CobroFooter({ presupuesto, onCancel, onConfirm }) {
+function CobroModal({ presupuesto, metodos, onClose, onConfirm }) {
+  const total = Number(presupuesto.total);
+  const pagado = Number(presupuesto.monto_pagado ?? 0);
+  const saldo = Number(presupuesto.saldo_restante ?? total);
+  const saldoExacto = Number((total - pagado).toFixed(2));
+  const [tipoPago, setTipoPago] = useState("contado");
+  const [montoParcial, setMontoParcial] = useState("");
+  const [idMetodo, setIdMetodo] = useState(metodos[0]?.id_metodo_pago || "");
+  const [error, setError] = useState("");
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (metodos.length && !idMetodo) setIdMetodo(metodos[0].id_metodo_pago); }, [metodos, idMetodo]);
+
+  const montoEfectivo = tipoPago === "contado" ? saldoExacto : Number(montoParcial);
+  const saldoRestantePreview = tipoPago === "contado" ? 0 : Number((saldoExacto - Number(montoParcial || 0)).toFixed(2));
+
+  function handleConfirm() {
+    setError("");
+    if (!idMetodo) { setError("Selecciona un método de pago"); return; }
+    if (tipoPago === "contado") {
+      onConfirm({ idPresupuesto: presupuesto.id_presupuesto, monto: saldoExacto, idMetodo });
+      return;
+    }
+    const m = Number(montoParcial);
+    if (!Number.isFinite(m) || m <= 0) { setError("Ingresa un monto válido mayor a 0"); return; }
+    if (m >= saldoExacto) { setError(`El pago parcial debe ser menor al saldo (${formatMoneda(saldoExacto)}). Para pagar todo usa "Pagar todo al contado".`); return; }
+    if (m > saldoExacto) { setError(`El monto no puede exceder el saldo pendiente (${formatMoneda(saldoExacto)})`); return; }
+    onConfirm({ idPresupuesto: presupuesto.id_presupuesto, monto: m, idMetodo });
+  }
+
   return (
-    <>
-      <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
-      <button className="btn btn-primary" onClick={() => onConfirm({ idPresupuesto: presupuesto.id_presupuesto, monto: presupuesto.total, idMetodo: document.getElementById("cobro-metodo")?.value })}>
-        Confirmar pago
-      </button>
-    </>
+    <Modal open={true} title={`Cobrar presupuesto #${presupuesto.id_presupuesto}`} onClose={onClose}
+      footer={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={handleConfirm}>{tipoPago === "contado" ? `Cobrar ${formatMoneda(saldoExacto)}` : `Cobrar ${formatMoneda(montoEfectivo || 0)}`}</button></>}>
+      <div style={{ marginBottom: 14, padding: 12, background: "var(--surface-2)", borderRadius: 10 }}>
+        <div style={{ fontWeight: 600 }}>{presupuesto.paciente_nombres} {presupuesto.paciente_apellidos} <span className="mono" style={{ color: "var(--text-faint)", fontWeight: 400 }}>({presupuesto.paciente_ci})</span></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 10, fontSize: 13 }}>
+          <div><div style={{ color: "var(--text-muted)" }}>Total</div><b className="mono">{formatMoneda(total)}</b></div>
+          <div><div style={{ color: "var(--text-muted)" }}>Ya pagado</div><b className="mono" style={{ color: pagado > 0 ? "var(--success)" : undefined }}>{formatMoneda(pagado)}</b></div>
+          <div><div style={{ color: "var(--text-muted)" }}>Saldo pendiente</div><b className="mono" style={{ color: "var(--danger)" }}>{formatMoneda(saldoExacto)}</b></div>
+        </div>
+        {presupuesto.estado === 'parcial' && <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-muted)" }}>Este presupuesto ya tiene un abono parcial. El saldo restante se cobra en esta o la siguiente consulta.</div>}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <label style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, border: tipoPago === 'contado' ? "2px solid var(--accent)" : "1px solid var(--border)", cursor: "pointer", background: tipoPago === 'contado' ? "var(--accent-ghost)" : "transparent" }}>
+          <input type="radio" name="tipoPago" checked={tipoPago === 'contado'} onChange={() => setTipoPago('contado')} />
+          <span style={{ fontWeight: 600, fontSize: 13 }}>Pagar todo al contado</span>
+        </label>
+        <label style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, border: tipoPago === 'parcial' ? "2px solid var(--accent)" : "1px solid var(--border)", cursor: "pointer", background: tipoPago === 'parcial' ? "var(--accent-ghost)" : "transparent" }}>
+          <input type="radio" name="tipoPago" checked={tipoPago === 'parcial'} onChange={() => setTipoPago('parcial')} />
+          <span style={{ fontWeight: 600, fontSize: 13 }}>Pagar una parte</span>
+        </label>
+      </div>
+
+      {tipoPago === 'contado' ? (
+        <div style={{ padding: "10px 12px", background: "var(--success-ghost, #ecfdf5)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 10, fontSize: 13 }}>
+          Se cobrará el saldo completo: <b className="mono">{formatMoneda(saldoExacto)}</b>. El presupuesto quedará <b>pagado</b>.
+        </div>
+      ) : (
+        <div>
+          <label className="label">Monto a pagar ahora (Bs) *</label>
+          <input className="input" type="number" step="0.01" min="0.01" max={saldoExacto - 0.01} placeholder={`Máx. ${saldoExacto.toFixed(2)}`} value={montoParcial} onChange={(e) => setMontoParcial(e.target.value)} autoFocus />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 13, padding: "8px 12px", background: "var(--surface-2)", borderRadius: 8 }}>
+            <span style={{ color: "var(--text-muted)" }}>Saldo restante para la siguiente consulta:</span>
+            <b className="mono" style={{ color: Number(montoParcial) > 0 && saldoRestantePreview >= 0 ? "var(--danger)" : "var(--text-muted)" }}>{formatMoneda(saldoRestantePreview >= 0 ? saldoRestantePreview : saldoExacto)}</b>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>El monto pagado y el saldo se guardan exactamente. El restante queda pendiente para la siguiente consulta.</p>
+        </div>
+      )}
+
+      {error && <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--danger-ghost)", border: "1px solid rgba(251,113,133,0.35)", color: "var(--danger)", borderRadius: 10, fontSize: 13 }}>{error}</div>}
+
+      <label className="label" style={{ marginTop: 14 }}>Método de pago *</label>
+      <select className="select" value={idMetodo} onChange={(e) => setIdMetodo(e.target.value)}>
+        {metodos.map((m) => (<option key={m.id_metodo_pago} value={m.id_metodo_pago}>{m.descripcion}</option>))}
+      </select>
+    </Modal>
   );
 }
 

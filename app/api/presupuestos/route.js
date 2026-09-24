@@ -18,7 +18,9 @@ export async function GET(request) {
   let sql = `SELECT pr.id_presupuesto, pr.fecha_emision, pr.total, pr.estado,
                     pac.id_paciente,
                     per.nombres AS paciente_nombres, per.apellidos AS paciente_apellidos,
-                    per.documento_identidad AS paciente_ci
+                    per.documento_identidad AS paciente_ci,
+                    COALESCE((SELECT SUM(cb.monto) FROM cobro cb WHERE cb.id_presupuesto = pr.id_presupuesto AND cb.anulado = FALSE), 0) AS monto_pagado,
+                    (pr.total - COALESCE((SELECT SUM(cb.monto) FROM cobro cb WHERE cb.id_presupuesto = pr.id_presupuesto AND cb.anulado = FALSE), 0)) AS saldo_restante
              FROM presupuesto pr
              JOIN paciente pac ON pac.id_paciente = pr.id_paciente
              JOIN persona per ON per.id_persona = pac.id_persona
