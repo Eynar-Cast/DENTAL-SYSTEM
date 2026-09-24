@@ -141,12 +141,19 @@ function TablaReporte({ tab, data }) {
   if (tab === "metodos-pago") return <Tabla columnas={["Método de pago", "Cantidad", "Total"]} filas={data.map((r) => [r.metodo_pago, r.cantidad, formatMoneda(r.total)])} />;
   if (tab === "comparacion-ingresos") return <Tabla columnas={["Mes", "Ingresos"]} filas={data.map((r) => [r.mes, formatMoneda(r.ingresos)])} />;
   if (tab === "cierres-caja") {
-    return <Tabla columnas={["#", "Apertura", "Cierre", "Inicial", "Ingresos", "Egresos", "Declarado", "Diferencia"]}
-      filas={data.map((r) => [
-        `#${r.id_caja}`, formatFechaHora(r.fecha_apertura), formatFechaHora(r.fecha_cierre),
-        formatMoneda(r.monto_inicial), formatMoneda(r.ingresos), formatMoneda(r.egresos),
-        formatMoneda(r.monto_declarado_cierre), formatMoneda(r.diferencia),
-      ])} />;
+    return (
+      <>
+        <Tabla columnas={["#", "Apertura", "Cierre", "Monto apertura caja", "Ingresos", "Egresos", "Declarado", "Diferencia"]}
+          filas={data.map((r) => [
+            `#${r.id_caja}`, formatFechaHora(r.fecha_apertura), formatFechaHora(r.fecha_cierre),
+            formatMoneda(r.monto_inicial), formatMoneda(r.ingresos), formatMoneda(r.egresos),
+            formatMoneda(r.monto_declarado_cierre), formatMoneda(r.diferencia),
+          ])} />
+        <p style={{ margin: "10px 4px 0", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+          Nota: <b>Monto apertura caja</b> es capital inicial y <b>no es ingreso</b>. Si lo sumáramos a utilidad/ingresos, inflarías la utilidad. Solo se usa para el arqueo: <span className="mono">saldo esperado = apertura + ingresos − egresos</span>.
+        </p>
+      </>
+    );
   }
   return null;
 }

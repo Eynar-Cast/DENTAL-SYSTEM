@@ -97,8 +97,9 @@ const REPORTES = {
       FROM caja c WHERE c.estado='cerrada'
         AND ($1::date IS NULL OR c.fecha_cierre::date>=$1::date) AND ($2::date IS NULL OR c.fecha_cierre::date<=$2::date)
       ORDER BY c.fecha_cierre DESC LIMIT 100`,
-    columnas: ["# Caja", "Apertura", "Cierre", "Monto inicial", "Ingresos", "Egresos", "Declarado", "Diferencia"],
+    columnas: ["# Caja", "Apertura", "Cierre", "Monto apertura caja", "Ingresos", "Egresos", "Declarado", "Diferencia"],
     map: (r) => [r.id_caja, r.fecha_apertura, r.fecha_cierre, Number(r.monto_inicial), Number(r.ingresos), Number(r.egresos), Number(r.monto_declarado_cierre), Number(r.diferencia)],
+    nota: "Nota: Monto apertura caja es capital inicial y no es ingreso. Si lo sumáramos a utilidad/ingresos, inflarías la utilidad. Solo se usa para arqueo: saldo esperado = apertura + ingresos − egresos.",
   },
 };
 
@@ -133,9 +134,15 @@ export async function GET(request) {
     definicion.columnas,
     ...filas.map(definicion.map),
   ];
+  if (definicion.nota) {
+    datos.push([]);
+    datos.push([definicion.nota]);
+  }
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(datos);
+  // Ajuste ancho columnas para que la nota sea legible
+  ws["!cols"] = definicion.columnas.map(() => ({ wch: 18 }));
   XLSX.utils.book_append_sheet(wb, ws, definicion.titulo.slice(0, 30));
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
 
