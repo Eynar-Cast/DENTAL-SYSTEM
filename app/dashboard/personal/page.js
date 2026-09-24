@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet, apiPatch } from "@/lib/client";
+import { apiGet, apiPatch, apiPost } from "@/lib/client";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import StatCard from "@/components/ui/StatCard";
 import Badge from "@/components/ui/Badge";
+import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { usePermisos } from "@/components/ui/DashboardShell";
@@ -18,8 +19,13 @@ export default function PersonalPage({ user }) {
   const [especialidades, setEspecialidades] = useState([]);
   const [q, setQ] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [showEspForm, setShowEspForm] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const toast = useToast();
+
+  async function cargarEspecialidades() {
+    try { setEspecialidades(await apiGet("/api/especialidades")); } catch {}
+  }
 
   async function cargar() {
     try {
@@ -41,8 +47,9 @@ export default function PersonalPage({ user }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
-    apiGet("/api/especialidades").then(setEspecialidades).catch(() => {});
+    cargarEspecialidades();
   }, []);
 
   async function cambiarEstado(p) {
@@ -72,7 +79,10 @@ export default function PersonalPage({ user }) {
           <p>Personal odontológico del consultorio.</p>
         </div>
         {esAdmin && (
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Registrar personal</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn btn-ghost" onClick={() => setShowEspForm(true)}>＋ Nueva especialidad</button>
+            <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Registrar personal</button>
+          </div>
         )}
       </div>
 
@@ -85,11 +95,16 @@ export default function PersonalPage({ user }) {
       {especialidades.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
           {especialidades.map((e) => (
-            <span key={e.id_especialidad} className="badge badge-teal">
+            <span key={e.id_especialidad} className="badge badge-teal" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               {e.nombre_especialidad}
               <span style={{ opacity: 0.7 }}>· {especialidadesConteo[e.nombre_especialidad] || 0}</span>
             </span>
           ))}
+        </div>
+      )}
+      {esAdmin && especialidades.length === 0 && (
+        <div className="card" style={{ padding: 12, marginBottom: 16, background: "var(--surface-2)", fontSize: 13, color: "var(--text-muted)" }}>
+          No hay especialidades registradas. Crea una con <b>＋ Nueva especialidad</b> para poder asignar al personal.
         </div>
       )}
 
@@ -143,7 +158,14 @@ export default function PersonalPage({ user }) {
         </div>
       )}
 
-      {showForm && <PersonalForm open onClose={() => setShowForm(false)} onSaved={() => { toast.push("success", "Personal registrado"); cargar(); }} />}
+      {showForm && <PersonalForm open onClose={() => setShowForm(false)} onSaved={() => { toast.push("success", "Personal registrado"); cargar(); cargarEspecialidades(); }} />}
+
+      {showEspForm && (
+        <NuevaEspecialidadModal
+          onClose={() => setShowEspForm(false)}
+          onSaved={() => { toast.push("success", "Especialidad creada"); cargarEspecialidades(); setShowEspForm(false); }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!confirm}
@@ -154,5 +176,37 @@ export default function PersonalPage({ user }) {
         onConfirm={() => cambiarEstado(confirm)}
       />
     </div>
+  );
+}
+
+function NuevaEspecialidadModal({ onClose, onSaved }) {
+  const [nombre, setNombre] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(e) {
+    e.preventDefault();
+    setError("");
+    if (!nombre.trim()) { setError("El nombre es obligatorio"); return; }
+    if (nombre.trim().length < 3) { setError("Mínimo 3 caracteres"); return; }
+    setLoading(true);
+    try {
+      await apiPost("/api/especialidades", { nombre_especialidad: nombre.trim() });
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <Modal open={true} title="Nueva especialidad" onClose={onClose}
+      footer={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={submit} disabled={loading}>{loading ? "Guardando..." : "Crear especialidad"}</button></>}>
+      <form onSubmit={submit}>
+        {error && <div style={{ padding: "10px 12px", marginBottom: 12, background: "var(--danger-ghost)", border: "1px solid rgba(251,113,133,0.35)", color: "var(--danger)", borderRadius: 10, fontSize: 13 }}>{error}</div>}
+        <label className="label">Nombre de la especialidad *</label>
+        <input className="input" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Implantología" autoFocus required maxLength={100} />
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>Quedará disponible en el formulario de registro de personal.</p>
+      </form>
+    </Modal>
   );
 }
