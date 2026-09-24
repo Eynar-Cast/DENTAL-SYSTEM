@@ -52,7 +52,7 @@ export default function DashboardPage({ user }) {
     const maxEstado = Math.max(...porEstado.map((p) => p.count), 1);
 
     return (
-      <div style={{ minWidth: 0, overflowX: "hidden" }}>
+      <div style={{ minWidth: 0 }}>
         <div className="welcome-banner" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, minWidth: 0 }}>
           <div style={{ minWidth: 0, flex: "1 1 200px" }}>
             <h2 style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{ahora ? saludoSegunHora(ahora) : "Bienvenido"}, Dr. {user?.nombres?.split(" ")[0] || ""}</h2>
@@ -297,7 +297,7 @@ export default function DashboardPage({ user }) {
   const maxEstado = Math.max(...porEstado.map((p) => p.count), 1);
 
   return (
-    <div style={{ minWidth: 0, overflowX: "hidden" }}>
+    <div style={{ minWidth: 0 }}>
       <div className="welcome-banner" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, minWidth: 0 }}>
         <div style={{ minWidth: 0, flex: "1 1 200px" }}>
           <h2 style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{ahora ? saludoSegunHora(ahora) : "Bienvenido"}, al panel</h2>
