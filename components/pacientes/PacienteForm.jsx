@@ -94,8 +94,8 @@ export default function PacienteForm({ open, onClose, onSaved }) {
 
         <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div>
-            <label className="label">Documento de identidad *</label>
-            <input className="input" value={form.persona.documento_identidad} onChange={(e) => setPersona("documento_identidad", e.target.value)} required />
+            <label className="label">Documento de identidad</label>
+            <input className="input" value={form.persona.documento_identidad} onChange={(e) => setPersona("documento_identidad", e.target.value)} />
           </div>
           <div>
             <label className="label">Grupo sanguíneo</label>
@@ -115,8 +115,8 @@ export default function PacienteForm({ open, onClose, onSaved }) {
             <input className="input" value={form.persona.apellidos} onChange={(e) => setPersona("apellidos", e.target.value)} required />
           </div>
           <div>
-            <label className="label">Fecha de nacimiento *</label>
-            <input className="input" type="date" value={form.persona.fecha_nacimiento} onChange={(e) => setPersona("fecha_nacimiento", e.target.value)} required />
+            <label className="label">Fecha de nacimiento</label>
+            <input className="input" type="date" value={form.persona.fecha_nacimiento} onChange={(e) => setPersona("fecha_nacimiento", e.target.value)} />
           </div>
           <div>
             <label className="label">Ciudad *</label>

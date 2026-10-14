@@ -59,11 +59,12 @@ export async function POST(request) {
   const nombres = textoLimpio(persona.nombres);
   const apellidos = textoLimpio(persona.apellidos);
 
-  if (!documento) return jsonError("El documento de identidad es obligatorio", 400);
   if (!nombres) return jsonError("Los nombres son obligatorios", 400);
   if (!apellidos) return jsonError("Los apellidos son obligatorios", 400);
-  if (!persona.fecha_nacimiento) return jsonError("La fecha de nacimiento es obligatoria", 400);
   if (!persona.id_ciudad) return jsonError("La ciudad es obligatoria", 400);
+
+  const fechaNacimiento = persona.fecha_nacimiento || "1900-01-01";
+  const documentoIdentidad = documento || `SIN-DOC-${Date.now()}`;
 
   const telefonos = Array.isArray(body.telefonos) ? body.telefonos : [];
 
@@ -74,10 +75,10 @@ export async function POST(request) {
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id_persona`,
         [
-          documento,
+          documentoIdentidad,
           nombres,
           apellidos,
-          persona.fecha_nacimiento,
+          fechaNacimiento,
           persona.id_ciudad,
           persona.direccion_calle || null,
         ]
@@ -107,7 +108,7 @@ export async function POST(request) {
         tabla: "paciente",
         operacion: "INSERT",
         idRegistro: idPaciente,
-        valorNuevo: { id_paciente: idPaciente, documento, nombres, apellidos },
+        valorNuevo: { id_paciente: idPaciente, documento: documentoIdentidad, nombres, apellidos },
         ip,
       });
 
