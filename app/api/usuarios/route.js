@@ -56,23 +56,58 @@ export async function POST(request) {
 
   try {
     const result = await withTransaction(async (client) => {
-      const ciudadResult = await client.query(`SELECT id_ciudad FROM ciudad LIMIT 1`);
-      const idCiudad = ciudadResult.rows[0]?.id_ciudad;
+      // Verificar si el email ya está registrado en usuario
+      const emailExiste = await client.query(`SELECT 1 FROM usuario WHERE email = $1`, [email]);
+      if (emailExiste.rows.length > 0) {
+        throw Object.assign(new Error("El email ya está registrado"), { code: "23505" });
+      }
 
-      const personaResult = await client.query(
-        `INSERT INTO persona (documento_identidad, nombres, apellidos, fecha_nacimiento, id_ciudad)
-         VALUES ($1, $2, $3, '1990-01-01', $4) RETURNING id_persona`,
-        [documento, nombres, apellidos, idCiudad]
+      // Verificar si ya existe una persona con este documento
+      let idPersona;
+      const personaExistente = await client.query(
+        `SELECT id_persona FROM persona WHERE documento_identidad = $1`,
+        [documento]
       );
-      const idPersona = personaResult.rows[0].id_persona;
+
+      if (personaExistente.rows.length > 0) {
+        // Usar la persona existente
+        idPersona = personaExistente.rows[0].id_persona;
+        
+        // Actualizar nombres/apellidos si son diferentes (opcional)
+        await client.query(
+          `UPDATE persona SET nombres = $1, apellidos = $2 WHERE id_persona = $3`,
+          [nombres, apellidos, idPersona]
+        );
+      } else {
+        // Crear nueva persona
+        const ciudadResult = await client.query(`SELECT id_ciudad FROM ciudad LIMIT 1`);
+        const idCiudad = ciudadResult.rows[0]?.id_ciudad;
+
+        const personaResult = await client.query(
+          `INSERT INTO persona (documento_identidad, nombres, apellidos, fecha_nacimiento, id_ciudad)
+           VALUES ($1, $2, $3, '1990-01-01', $4) RETURNING id_persona`,
+          [documento, nombres, apellidos, idCiudad]
+        );
+        idPersona = personaResult.rows[0].id_persona;
+      }
+
+      // Verificar si esta persona ya tiene usuario
+      const usuarioExistente = await client.query(`SELECT 1 FROM usuario WHERE id_persona = $1`, [idPersona]);
+      if (usuarioExistente.rows.length > 0) {
+        throw Object.assign(new Error("Esta persona ya tiene una cuenta de usuario"), { code: "23505" });
+      }
 
       // Vincular el usuario a un miembro del personal (si corresponde)
       if (esPersonalOdontologo) {
-        await client.query(
-          `INSERT INTO personal (id_persona, id_especialidad, numero_colegiatura, activo)
-           VALUES ($1, $2, NULL, TRUE)`,
-          [idPersona, idEspecialidad || null]
-        );
+        // Verificar si ya es personal
+        const personalExistente = await client.query(`SELECT 1 FROM personal WHERE id_persona = $1`, [idPersona]);
+        if (personalExistente.rows.length === 0) {
+          await client.query(
+            `INSERT INTO personal (id_persona, id_especialidad, numero_colegiatura, activo)
+             VALUES ($1, $2, NULL, TRUE)`,
+            [idPersona, idEspecialidad || null]
+          );
+        }
       }
 
       const passwordHash = await hashPassword(password);
@@ -99,7 +134,7 @@ export async function POST(request) {
         tabla: "usuario",
         operacion: "INSERT",
         idRegistro: idUsuario,
-        valorNuevo: { id_usuario: idUsuario, email, roles },
+        valorNuevo: { id_usuario: idUsuario, email, roles, documento, nombres, apellidos },
         ip,
       });
 
@@ -108,7 +143,7 @@ export async function POST(request) {
 
     return jsonOk({ id_usuario: result, mensaje: "Usuario creado exitosamente" }, 201);
   } catch (err) {
-    if (err.code === "23505") return jsonError("El email o documento ya está registrado.", 409);
+    if (err.code === "23505") return jsonError(err.message || "El email o documento ya está registrado.", 409);
     console.error("Error creando usuario:", err);
     return jsonError("Error interno del servidor.", 500);
   }
