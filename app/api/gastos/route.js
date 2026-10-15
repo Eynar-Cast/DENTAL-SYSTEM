@@ -1,5 +1,5 @@
 import { requireAuth, requireRoles, obtenerIP } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { query, withTransaction } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
 import { registrarAuditoria } from "@/lib/audit";
 import { textoLimpio, esNumeroPositivo, esFechaISO, esMesISO } from "@/lib/validations";
